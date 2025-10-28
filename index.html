@@ -21,7 +21,7 @@
         .content { padding: 20px; }
         .case-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 15px; transition: all 0.3s; }
         .case-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
-        .case-header { display: flex; justify-content: between; align-items: center; margin-bottom: 10px; }
+        .case-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .case-title { font-size: 1.3em; font-weight: bold; color: #333; margin: 0; }
         .case-meta { font-size: 0.9em; color: #666; }
         .case-tags { margin: 10px 0; }
@@ -259,6 +259,7 @@
         let cases = JSON.parse(localStorage.getItem('aiCases') || '[]');
         let companies = JSON.parse(localStorage.getItem('companySettings') || '{}');
         let githubSettings = JSON.parse(localStorage.getItem('githubSettings') || '{}');
+        let editingCaseId = null;
 
         // デフォルト会社設定
         if (Object.keys(companies).length === 0) {
@@ -313,7 +314,13 @@
                     <div class="case-item">
                         <div class="case-header">
                             <h3 class="case-title">${c.title}</h3>
-                            <div class="case-meta">${c.company} | ${c.author} | ${c.date}</div>
+                            <div class="case-meta">
+                                ${c.company} | ${c.author} | ${c.date}
+                                <div style="margin-left: 10px;">
+                                    <button class="btn" style="background: #ffc107; color: #212529; padding: 5px 10px; font-size: 12px; margin-right: 5px;" onclick="editCase(${c.id})">編集</button>
+                                    <button class="btn" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 12px;" onclick="deleteCase(${c.id})">削除</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="case-tags">
                             <div class="multi-category">
@@ -393,6 +400,9 @@
         }
 
         function openModal() {
+            editingCaseId = null;
+            document.querySelector('#postModal .modal-header h2').textContent = '新規事例投稿';
+            document.querySelector('#caseForm button[type="submit"]').textContent = '投稿する';
             document.getElementById('postModal').style.display = 'block';
         }
 
@@ -402,6 +412,41 @@
             document.querySelectorAll('.category-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
+            editingCaseId = null;
+        }
+
+        function deleteCase(caseId) {
+            if (confirm('この事例を削除しますか？')) {
+                cases = cases.filter(c => c.id !== caseId);
+                saveCases();
+                alert('事例を削除しました');
+            }
+        }
+
+        function editCase(caseId) {
+            const caseData = cases.find(c => c.id === caseId);
+            if (!caseData) return;
+
+            editingCaseId = caseId;
+            document.querySelector('#postModal .modal-header h2').textContent = '事例編集';
+            document.querySelector('#caseForm button[type="submit"]').textContent = '更新する';
+
+            // フォームに既存データを設定
+            document.getElementById('company').value = caseData.company;
+            document.getElementById('author').value = caseData.author;
+            document.getElementById('title').value = caseData.title;
+            document.getElementById('aiTool').value = caseData.aiTool;
+            document.getElementById('content').value = caseData.content;
+            document.getElementById('effect').value = caseData.effect || '';
+            document.getElementById('effectRate').value = caseData.effectRate || '';
+            document.getElementById('notes').value = caseData.notes || '';
+
+            // カテゴリチェックボックスを設定
+            document.querySelectorAll('.category-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = (caseData.categories || [caseData.category]).includes(cb.value);
+            });
+
+            document.getElementById('postModal').style.display = 'block';
         }
 
         function exportData() {
@@ -600,29 +645,52 @@ ${caseData.notes || 'なし'}`,
                 return;
             }
             
-            const newCase = {
-                id: Date.now(),
-                company: document.getElementById('company').value,
-                author: document.getElementById('author').value,
-                title: document.getElementById('title').value,
-                categories: selectedCategories,
-                aiTool: document.getElementById('aiTool').value,
-                content: document.getElementById('content').value,
-                effect: document.getElementById('effect').value,
-                effectRate: parseInt(document.getElementById('effectRate').value) || null,
-                notes: document.getElementById('notes').value,
-                date: new Date().toISOString().split('T')[0]
-            };
-
-            cases.unshift(newCase);
-            saveCases();
-            closeModal();
-
-            // GitHub Issueに投稿
-            if (githubSettings.token) {
-                createIssue(newCase);
+            if (editingCaseId) {
+                // 編集モード
+                const caseIndex = cases.findIndex(c => c.id === editingCaseId);
+                if (caseIndex !== -1) {
+                    cases[caseIndex] = {
+                        ...cases[caseIndex],
+                        company: document.getElementById('company').value,
+                        author: document.getElementById('author').value,
+                        title: document.getElementById('title').value,
+                        categories: selectedCategories,
+                        aiTool: document.getElementById('aiTool').value,
+                        content: document.getElementById('content').value,
+                        effect: document.getElementById('effect').value,
+                        effectRate: parseInt(document.getElementById('effectRate').value) || null,
+                        notes: document.getElementById('notes').value
+                    };
+                    saveCases();
+                    closeModal();
+                    alert('事例を更新しました！');
+                }
             } else {
-                alert('事例を投稿しました！GitHub連携するには設定が必要です。');
+                // 新規投稿モード
+                const newCase = {
+                    id: Date.now(),
+                    company: document.getElementById('company').value,
+                    author: document.getElementById('author').value,
+                    title: document.getElementById('title').value,
+                    categories: selectedCategories,
+                    aiTool: document.getElementById('aiTool').value,
+                    content: document.getElementById('content').value,
+                    effect: document.getElementById('effect').value,
+                    effectRate: parseInt(document.getElementById('effectRate').value) || null,
+                    notes: document.getElementById('notes').value,
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                cases.unshift(newCase);
+                saveCases();
+                closeModal();
+
+                // GitHub Issueに投稿
+                if (githubSettings.token) {
+                    createIssue(newCase);
+                } else {
+                    alert('事例を投稿しました！GitHub連携するには設定が必要です。');
+                }
             }
         });
 
