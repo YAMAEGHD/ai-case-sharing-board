@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>グループ会社 生成AI活用事例共有掲示板</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
+        .header h1 { margin: 0; font-size: 2.2em; }
+        .header p { margin: 10px 0 0 0; opacity: 0.9; }
+        .controls { padding: 20px; border-bottom: 1px solid #eee; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd8; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .search-box { flex: 1; min-width: 200px; }
+        .content { padding: 20px; }
+        .case-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 15px; transition: all 0.3s; }
+        .case-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .case-header { display: flex; justify-content: between; align-items: center; margin-bottom: 10px; }
+        .case-title { font-size: 1.3em; font-weight: bold; color: #333; margin: 0; }
+        .case-meta { font-size: 0.9em; color: #666; }
+        .case-tags { margin: 10px 0; }
+        .tag { background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; }
+        .case-content { margin: 15px 0; line-height: 1.6; }
+        .case-effect { background: #e8f5e8; border-left: 4px solid #28a745; padding: 10px; margin: 10px 0; border-radius: 0 4px 4px 0; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 0; width: 90%; max-width: 600px; border-radius: 10px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { background: #667eea; color: white; padding: 20px; border-radius: 10px 10px 0 0; }
+        .modal-body { padding: 20px; }
+        .close { color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form-group textarea { height: 100px; resize: vertical; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 2em; font-weight: bold; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; }
+        .company-stats { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .company-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .company-row:last-child { border-bottom: none; }
+        .company-name { font-weight: bold; }
+        .user-count { color: #666; font-size: 0.9em; }
+        .effect-bar { background: #e9ecef; height: 20px; border-radius: 10px; overflow: hidden; margin: 5px 0; position: relative; }
+        .effect-fill { height: 100%; border-radius: 10px; transition: width 0.3s ease; }
+        .effect-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8em; font-weight: bold; color: white; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); }
+        .effect-low { background: linear-gradient(90deg, #ffc107, #fd7e14); }
+        .effect-medium { background: linear-gradient(90deg, #28a745, #20c997); }
+        .effect-high { background: linear-gradient(90deg, #007bff, #6f42c1); }
+        .category-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .category-checkbox { display: flex; align-items: center; gap: 5px; }
+        .category-checkbox input[type="checkbox"] { margin: 0; }
+        .multi-category { display: flex; flex-wrap: wrap; gap: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 生成AI活用事例共有掲示板</h1>
+            <p>グループ会社間での生成AI活用事例・ノウハウ共有</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="openModal()">📝 新規事例投稿</button>
+            <button class="btn btn-success" onclick="exportData()">📊 データエクスポート</button>
+            <button class="btn btn-success" onclick="openCompanyModal()">👥 会社設定</button>
+            <select id="companyFilter" onchange="filterCases()">
+                <option value="">全社</option>
+                <option value="ヤマエグループホールディングス">ヤマエグループホールディングス</option>
+                <option value="ヤマエ久野">ヤマエ久野</option>
+                <option value="日本ピザハット">日本ピザハット</option>
+                <option value="コンフェックス">コンフェックス</option>
+            </select>
+            <select id="categoryFilter" onchange="filterCases()">
+                <option value="">全カテゴリ</option>
+                <option value="文書作成">文書作成</option>
+                <option value="データ分析">データ分析</option>
+                <option value="顧客対応">顧客対応</option>
+                <option value="業務効率化">業務効率化</option>
+                <option value="営業支援">営業支援</option>
+                <option value="品質管理">品質管理</option>
+                <option value="教育・研修">教育・研修</option>
+                <option value="その他">その他</option>
+            </select>
+            <input type="text" id="searchBox" class="search-box" placeholder="🔍 キーワード検索..." onkeyup="filterCases()">
+        </div>
+
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCases">0</div>
+                    <div class="stat-label">総事例数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCompanies">0</div>
+                    <div class="stat-label">参加会社数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgEffect">0%</div>
+                    <div class="stat-label">平均効果</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalUsers">0</div>
+                    <div class="stat-label">総利用者数</div>
+                </div>
+            </div>
+
+            <div class="company-stats">
+                <h3 style="margin-top: 0;">📊 会社別統計</h3>
+                <div id="companyStats"></div>
+            </div>
+
+            <div id="casesList"></div>
+        </div>
+    </div>
+
+    <!-- 会社設定モーダル -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeCompanyModal()">&times;</span>
+                <h2>会社・利用者数設定</h2>
+            </div>
+            <div class="modal-body">
+                <div id="companyList"></div>
+                <div class="form-group">
+                    <label>新しい会社を追加</label>
+                    <input type="text" id="newCompanyName" placeholder="会社名">
+                    <input type="number" id="newCompanyUsers" placeholder="利用者数" min="1">
+                    <button class="btn btn-primary" onclick="addCompany()">追加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 投稿モーダル -->
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>新規事例投稿</h2>
+            </div>
+            <div class="modal-body">
+                <form id="caseForm">
+                    <div class="form-group">
+                        <label>会社名 *</label>
+                        <select id="company" required>
+                            <option value="">選択してください</option>
+                            <option value="ヤマエグループホールディングス">ヤマエグループホールディングス</option>
+                            <option value="ヤマエ久野">ヤマエ久野</option>
+                            <option value="日本ピザハット">日本ピザハット</option>
+                            <option value="コンフェックス">コンフェックス</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>投稿者名 *</label>
+                        <input type="text" id="author" required>
+                    </div>
+                    <div class="form-group">
+                        <label>事例タイトル *</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>カテゴリ * (複数選択可)</label>
+                        <div class="category-selector">
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-文書作成" value="文書作成">
+                                <label for="cat-文書作成">文書作成</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-データ分析" value="データ分析">
+                                <label for="cat-データ分析">データ分析</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-顧客対応" value="顧客対応">
+                                <label for="cat-顧客対応">顧客対応</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-業務効率化" value="業務効率化">
+                                <label for="cat-業務効率化">業務効率化</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-営業支援" value="営業支援">
+                                <label for="cat-営業支援">営業支援</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-品質管理" value="品質管理">
+                                <label for="cat-品質管理">品質管理</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-教育・研修" value="教育・研修">
+                                <label for="cat-教育・研修">教育・研修</label>
+                            </div>
+                            <div class="category-checkbox">
+                                <input type="checkbox" id="cat-その他" value="その他">
+                                <label for="cat-その他">その他</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>使用AI *</label>
+                        <input type="text" id="aiTool" placeholder="例: ChatGPT, Claude, Copilot" required>
+                    </div>
+                    <div class="form-group">
+                        <label>事例内容 *</label>
+                        <textarea id="content" placeholder="具体的な活用方法、手順、工夫点など" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>効果・成果</label>
+                        <textarea id="effect" placeholder="時間短縮、品質向上、コスト削減など"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>効果率 (%)</label>
+                        <input type="number" id="effectRate" min="0" max="100" placeholder="例: 30 (30%の時間短縮)">
+                    </div>
+                    <div class="form-group">
+                        <label>注意点・課題</label>
+                        <textarea id="notes" placeholder="使用時の注意点、課題、改善点など"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">投稿する</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cases = JSON.parse(localStorage.getItem('aiCases') || '[]');
+        let companies = JSON.parse(localStorage.getItem('companySettings') || '{}');
+
+        // デフォルト会社設定
+        if (Object.keys(companies).length === 0) {
+            companies = {
+                'ヤマエグループホールディングス': 10,
+                'ヤマエ久野': 15,
+                '日本ピザハット': 12,
+                'コンフェックス': 8
+            };
+            localStorage.setItem('companySettings', JSON.stringify(companies));
+        }
+
+
+
+        function saveCases() {
+            localStorage.setItem('aiCases', JSON.stringify(cases));
+            updateStats();
+            displayCases();
+        }
+
+        function getEffectBarClass(rate) {
+            if (rate >= 70) return 'effect-high';
+            if (rate >= 40) return 'effect-medium';
+            return 'effect-low';
+        }
+
+        function displayCases() {
+            const container = document.getElementById('casesList');
+            const companyFilter = document.getElementById('companyFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+
+            let filteredCases = cases.filter(c => {
+                const categories = c.categories || [c.category]; // 後方互換性
+                return (!companyFilter || c.company === companyFilter) &&
+                       (!categoryFilter || categories.includes(categoryFilter)) &&
+                       (!searchTerm || c.title.toLowerCase().includes(searchTerm) || 
+                        c.content.toLowerCase().includes(searchTerm) || 
+                        c.aiTool.toLowerCase().includes(searchTerm) ||
+                        categories.some(cat => cat.toLowerCase().includes(searchTerm)));
+            });
+
+            container.innerHTML = filteredCases.map(c => {
+                const categories = c.categories || [c.category];
+                const effectBar = c.effectRate ? `
+                    <div class="effect-bar">
+                        <div class="effect-fill ${getEffectBarClass(c.effectRate)}" style="width: ${c.effectRate}%">
+                            <div class="effect-text">${c.effectRate}% 効果</div>
+                        </div>
+                    </div>
+                ` : '';
+                
+                return `
+                    <div class="case-item">
+                        <div class="case-header">
+                            <h3 class="case-title">${c.title}</h3>
+                            <div class="case-meta">${c.company} | ${c.author} | ${c.date}</div>
+                        </div>
+                        <div class="case-tags">
+                            <div class="multi-category">
+                                ${categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
+                            </div>
+                            <span class="tag">${c.aiTool}</span>
+                        </div>
+                        ${effectBar}
+                        <div class="case-content">${c.content}</div>
+                        ${c.effect ? `<div class="case-effect"><strong>効果・成果:</strong> ${c.effect}</div>` : ''}
+                        ${c.notes ? `<div style="margin-top:10px;"><strong>注意点:</strong> ${c.notes}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const companyFilter = document.getElementById('companyFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+
+            let filteredCases = cases.filter(c => {
+                const categories = c.categories || [c.category];
+                return (!companyFilter || c.company === companyFilter) &&
+                       (!categoryFilter || categories.includes(categoryFilter)) &&
+                       (!searchTerm || c.title.toLowerCase().includes(searchTerm) || 
+                        c.content.toLowerCase().includes(searchTerm) || 
+                        c.aiTool.toLowerCase().includes(searchTerm) ||
+                        categories.some(cat => cat.toLowerCase().includes(searchTerm)));
+            });
+
+            document.getElementById('totalCases').textContent = filteredCases.length;
+            
+            const uniqueCompanies = new Set(filteredCases.map(c => c.company));
+            document.getElementById('totalCompanies').textContent = uniqueCompanies.size;
+            
+            const avgEffect = filteredCases.filter(c => c.effectRate).reduce((sum, c) => sum + c.effectRate, 0) / filteredCases.filter(c => c.effectRate).length || 0;
+            document.getElementById('avgEffect').textContent = Math.round(avgEffect);
+            
+            const totalUsers = Array.from(uniqueCompanies).reduce((sum, company) => sum + (companies[company] || 0), 0);
+            document.getElementById('totalUsers').textContent = totalUsers;
+
+            updateCompanyStats(filteredCases);
+        }
+
+        function updateCompanyStats(filteredCases) {
+            const companyData = {};
+            
+            // 各会社の事例数を集計
+            filteredCases.forEach(c => {
+                if (!companyData[c.company]) {
+                    companyData[c.company] = { cases: 0, totalEffect: 0, effectCount: 0 };
+                }
+                companyData[c.company].cases++;
+                if (c.effectRate) {
+                    companyData[c.company].totalEffect += c.effectRate;
+                    companyData[c.company].effectCount++;
+                }
+            });
+
+            const statsHtml = Object.keys(companies).map(company => {
+                const data = companyData[company] || { cases: 0, totalEffect: 0, effectCount: 0 };
+                const avgEffect = data.effectCount > 0 ? Math.round(data.totalEffect / data.effectCount) : 0;
+                return `
+                    <div class="company-row">
+                        <span class="company-name">${company}</span>
+                        <span>事例: ${data.cases}件 | 利用者: ${companies[company]}名 | 平均効果: ${avgEffect}%</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('companyStats').innerHTML = statsHtml;
+        }
+
+        function openModal() {
+            document.getElementById('postModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('postModal').style.display = 'none';
+            document.getElementById('caseForm').reset();
+            // チェックボックスもリセット
+            document.querySelectorAll('.category-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        function filterCases() {
+            displayCases();
+            updateStats();
+        }
+
+        function openCompanyModal() {
+            updateCompanyList();
+            document.getElementById('companyModal').style.display = 'block';
+        }
+
+        function closeCompanyModal() {
+            document.getElementById('companyModal').style.display = 'none';
+        }
+
+        function updateCompanyList() {
+            const html = Object.entries(companies).map(([company, users]) => `
+                <div class="form-group">
+                    <label>${company}</label>
+                    <input type="number" value="${users}" min="1" onchange="updateCompanyUsers('${company}', this.value)">
+                    <button class="btn" style="background: #dc3545; color: white; margin-left: 10px;" onclick="removeCompany('${company}')">削除</button>
+                </div>
+            `).join('');
+            document.getElementById('companyList').innerHTML = html;
+        }
+
+        function updateCompanyUsers(company, users) {
+            companies[company] = parseInt(users);
+            localStorage.setItem('companySettings', JSON.stringify(companies));
+            updateStats();
+            updateCompanyOptions();
+        }
+
+        function addCompany() {
+            const name = document.getElementById('newCompanyName').value.trim();
+            const users = parseInt(document.getElementById('newCompanyUsers').value);
+            
+            if (name && users > 0) {
+                companies[name] = users;
+                localStorage.setItem('companySettings', JSON.stringify(companies));
+                document.getElementById('newCompanyName').value = '';
+                document.getElementById('newCompanyUsers').value = '';
+                updateCompanyList();
+                updateCompanyOptions();
+                updateStats();
+            }
+        }
+
+        function removeCompany(company) {
+            if (confirm(`${company}を削除しますか？`)) {
+                delete companies[company];
+                localStorage.setItem('companySettings', JSON.stringify(companies));
+                updateCompanyList();
+                updateCompanyOptions();
+                updateStats();
+            }
+        }
+
+
+
+        function updateCompanyOptions() {
+            const selects = ['companyFilter', 'company'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const currentValue = select.value;
+                const isFilter = selectId === 'companyFilter';
+                
+                select.innerHTML = (isFilter ? '<option value="">全社</option>' : '<option value="">選択してください</option>') +
+                    Object.keys(companies).sort().map(company => `<option value="${company}">${company}</option>`).join('');
+                
+                if (currentValue && companies[currentValue]) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(cases, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ai-cases-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        document.getElementById('caseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 選択されたカテゴリを取得
+            const selectedCategories = [];
+            document.querySelectorAll('.category-checkbox input[type="checkbox"]:checked').forEach(cb => {
+                selectedCategories.push(cb.value);
+            });
+            
+            if (selectedCategories.length === 0) {
+                alert('カテゴリを1つ以上選択してください。');
+                return;
+            }
+            
+            const newCase = {
+                id: Date.now(),
+                company: document.getElementById('company').value,
+                author: document.getElementById('author').value,
+                title: document.getElementById('title').value,
+                categories: selectedCategories,
+                aiTool: document.getElementById('aiTool').value,
+                content: document.getElementById('content').value,
+                effect: document.getElementById('effect').value,
+                effectRate: parseInt(document.getElementById('effectRate').value) || null,
+                notes: document.getElementById('notes').value,
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            cases.unshift(newCase);
+            saveCases();
+            closeModal();
+            alert('事例を投稿しました！');
+        });
+
+        // 初期表示
+        updateCompanyOptions();
+        displayCases();
+        updateStats();
+
+        // モーダル外クリックで閉じる
+        window.onclick = function(event) {
+            const modal = document.getElementById('postModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
