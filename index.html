@@ -573,16 +573,29 @@
             }
             
             try {
+                // CORS回避のためプロキシサービスを使用
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
                 const downloadUrl = convertToDownloadUrl(syncSettings.url);
-                const response = await fetch(downloadUrl);
+                const response = await fetch(proxyUrl + encodeURIComponent(downloadUrl));
                 
                 if (response.ok) {
-                    alert('接続テスト成功！OneDriveへのアクセスが確認できました。');
+                    const data = await response.json();
+                    if (data.status.http_code === 200) {
+                        try {
+                            JSON.parse(data.contents);
+                            alert('接続テスト成功！OneDriveファイルにアクセスできました。');
+                        } catch (jsonError) {
+                            alert('ファイルはアクセスできますが、JSON形式ではありません。正しいデータファイルをアップロードしてください。');
+                        }
+                    } else {
+                        alert(`接続エラー: HTTP ${data.status.http_code}\n\nURLやアクセス権限を確認してください。\n\nヒント:\n1. OneDriveでファイルを右クリック\n2. 「共有」を選択\n3. 「リンクを知っているすべてのユーザー」を選択\n4. 「コピー」でURLを取得`);
+                    }
                 } else {
-                    alert('接続テスト失敗。URLやアクセス権限を確認してください。');
+                    alert('プロキシサービスエラー。しばらく待ってから再試行してください。');
                 }
             } catch (error) {
-                alert('接続エラーが発生しました。URLを確認してください。');
+                console.error('Test sync error:', error);
+                alert(`接続エラー: ${error.message}\n\nOneDrive URLの形式を確認してください。\n\n正しい形式例:\n- https://1drv.ms/u/s!xxxxxxxxx\n- https://onedrive.live.com/...\n- https://xxx.sharepoint.com/...`);
             }
         }
 
@@ -593,33 +606,44 @@
             }
             
             try {
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
                 const downloadUrl = convertToDownloadUrl(syncSettings.url);
-                const response = await fetch(downloadUrl);
+                const response = await fetch(proxyUrl + encodeURIComponent(downloadUrl));
                 
                 if (response.ok) {
-                    const remoteData = await response.json();
-                    
-                    // ローカルデータとマージ
-                    const mergedCases = mergeData(cases, remoteData.cases || []);
-                    const mergedCompanies = { ...companies, ...(remoteData.companies || {}) };
-                    
-                    cases = mergedCases;
-                    companies = mergedCompanies;
-                    
-                    localStorage.setItem('aiCases', JSON.stringify(cases));
-                    localStorage.setItem('companySettings', JSON.stringify(companies));
-                    
-                    updateCompanyOptions();
-                    displayCases();
-                    updateStats();
-                    
-                    alert(`同期完了！${mergedCases.length}件の事例を取得しました。`);
+                    const data = await response.json();
+                    if (data.status.http_code === 200) {
+                        try {
+                            const remoteData = JSON.parse(data.contents);
+                            
+                            // ローカルデータとマージ
+                            const mergedCases = mergeData(cases, remoteData.cases || []);
+                            const mergedCompanies = { ...companies, ...(remoteData.companies || {}) };
+                            
+                            cases = mergedCases;
+                            companies = mergedCompanies;
+                            
+                            localStorage.setItem('aiCases', JSON.stringify(cases));
+                            localStorage.setItem('companySettings', JSON.stringify(companies));
+                            
+                            updateCompanyOptions();
+                            displayCases();
+                            updateStats();
+                            
+                            const newCasesCount = mergedCases.length - (JSON.parse(localStorage.getItem('aiCases') || '[]')).length;
+                            alert(`同期完了！\n総事例数: ${mergedCases.length}件\n新規取得: ${Math.max(0, newCasesCount)}件`);
+                        } catch (jsonError) {
+                            alert('データ形式エラー。OneDriveのJSONファイルが破損している可能性があります。');
+                        }
+                    } else {
+                        alert(`同期失敗: HTTP ${data.status.http_code}\nOneDriveファイルにアクセスできません。`);
+                    }
                 } else {
-                    alert('同期失敗。OneDriveファイルが見つかりません。');
+                    console.log('自動同期エラー（サイレント）');
                 }
             } catch (error) {
                 console.error('Sync error:', error);
-                alert('同期エラーが発生しました。');
+                // 自動同期の場合はエラーを表示しない
             }
         }
 
@@ -668,15 +692,30 @@
         }
 
         function convertToDownloadUrl(shareUrl) {
-            // OneDrive共有URLをダウンロードURLに変換
-            if (shareUrl.includes('1drv.ms')) {
-                return shareUrl.replace('1drv.ms', '1drv.ms/download');
-            } else if (shareUrl.includes('onedrive.live.com')) {
-                return shareUrl.replace('/view', '/download');
-            } else if (shareUrl.includes('sharepoint.com')) {
-                return shareUrl + '&download=1';
+            // OneDrive共有URLを直接ダウンロードURLに変換
+            try {
+                if (shareUrl.includes('1drv.ms/')) {
+                    // 1drv.ms 短縮 URLの場合
+                    const fileId = shareUrl.split('/').pop();
+                    return `https://api.onedrive.com/v1.0/shares/s!${fileId}/root/content`;
+                } else if (shareUrl.includes('onedrive.live.com')) {
+                    // onedrive.live.com URLの場合
+                    const url = new URL(shareUrl);
+                    const resid = url.searchParams.get('resid');
+                    if (resid) {
+                        return `https://api.onedrive.com/v1.0/drive/items/${resid}/content`;
+                    }
+                } else if (shareUrl.includes('sharepoint.com')) {
+                    // SharePoint URLの場合
+                    return shareUrl.replace('?', '?download=1&');
+                }
+                
+                // 直接ダウンロードリンクの場合
+                return shareUrl;
+            } catch (error) {
+                console.error('URL conversion error:', error);
+                return shareUrl;
             }
-            return shareUrl;
         }
 
         function mergeData(localCases, remoteCases) {
