@@ -566,29 +566,92 @@
             closeSyncModal();
         }
 
-        function testSync() {
+        async function testSync() {
             if (!syncSettings.url) {
                 alert('OneDrive URLを入力してください');
                 return;
             }
-            alert('接続テスト機能は開発中です。実際の運用では共有フォルダへのアクセス権限を確認してください。');
+            
+            try {
+                const downloadUrl = convertToDownloadUrl(syncSettings.url);
+                const response = await fetch(downloadUrl);
+                
+                if (response.ok) {
+                    alert('接続テスト成功！OneDriveへのアクセスが確認できました。');
+                } else {
+                    alert('接続テスト失敗。URLやアクセス権限を確認してください。');
+                }
+            } catch (error) {
+                alert('接続エラーが発生しました。URLを確認してください。');
+            }
         }
 
-        function syncData() {
+        async function syncData() {
             if (!syncSettings.url) {
                 alert('OneDrive設定が必要です');
                 return;
             }
             
-            // 実際の実装では、OneDriveからJSONファイルを読み込み
-            alert('同期機能は開発中です。現在はローカルデータのみ表示しています。');
+            try {
+                const downloadUrl = convertToDownloadUrl(syncSettings.url);
+                const response = await fetch(downloadUrl);
+                
+                if (response.ok) {
+                    const remoteData = await response.json();
+                    
+                    // ローカルデータとマージ
+                    const mergedCases = mergeData(cases, remoteData.cases || []);
+                    const mergedCompanies = { ...companies, ...(remoteData.companies || {}) };
+                    
+                    cases = mergedCases;
+                    companies = mergedCompanies;
+                    
+                    localStorage.setItem('aiCases', JSON.stringify(cases));
+                    localStorage.setItem('companySettings', JSON.stringify(companies));
+                    
+                    updateCompanyOptions();
+                    displayCases();
+                    updateStats();
+                    
+                    alert(`同期完了！${mergedCases.length}件の事例を取得しました。`);
+                } else {
+                    alert('同期失敗。OneDriveファイルが見つかりません。');
+                }
+            } catch (error) {
+                console.error('Sync error:', error);
+                alert('同期エラーが発生しました。');
+            }
         }
 
-        function uploadToOneDrive() {
+        async function uploadToOneDrive() {
             if (!syncSettings.url) return;
             
-            // 実際の実装では、OneDriveにJSONファイルをアップロード
-            console.log('OneDriveに自動保存中...');
+            try {
+                const data = {
+                    cases: cases,
+                    companies: companies,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                // OneDriveへのアップロードはブラウザの制限で直接実行不可
+                // 代わりにダウンロードリンクを生成して手動アップロードを促す
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'ai-cases-sync.json';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                alert('データファイルをダウンロードしました。OneDrive共有フォルダに手動でアップロードしてください。');
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+            }
         }
 
         function startAutoSync() {
@@ -600,7 +663,35 @@
                 syncInterval = setInterval(() => {
                     syncData();
                 }, syncSettings.interval * 1000);
+                console.log(`自動同期開始: ${syncSettings.interval}秒間隔`);
             }
+        }
+
+        function convertToDownloadUrl(shareUrl) {
+            // OneDrive共有URLをダウンロードURLに変換
+            if (shareUrl.includes('1drv.ms')) {
+                return shareUrl.replace('1drv.ms', '1drv.ms/download');
+            } else if (shareUrl.includes('onedrive.live.com')) {
+                return shareUrl.replace('/view', '/download');
+            } else if (shareUrl.includes('sharepoint.com')) {
+                return shareUrl + '&download=1';
+            }
+            return shareUrl;
+        }
+
+        function mergeData(localCases, remoteCases) {
+            const merged = [...localCases];
+            const localIds = new Set(localCases.map(c => c.id));
+            
+            // リモートの新しいデータを追加
+            remoteCases.forEach(remoteCase => {
+                if (!localIds.has(remoteCase.id)) {
+                    merged.push(remoteCase);
+                }
+            });
+            
+            // 日付でソート
+            return merged.sort((a, b) => new Date(b.date) - new Date(a.date));
         }
 
         document.getElementById('caseForm').addEventListener('submit', function(e) {
@@ -653,7 +744,11 @@
                 cases.unshift(newCase);
                 saveCases();
                 closeModal();
-                alert('事例を投稿しました！OneDriveに自動保存されます。');
+                alert('事例を投稿しました！');
+                // OneDriveへのアップロードを促す
+                if (confirm('OneDriveにデータをアップロードしますか？')) {
+                    uploadToOneDrive();
+                }
             }
         });
 
