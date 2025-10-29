@@ -306,7 +306,9 @@
                     return;
                 }
                 supabase = window.supabase.createClient(url, key);
-                updateSyncStatus('connected', 'Supabase接続: 正常');
+                updateSyncStatus('connected', 'Supabase接続: 正常 - リアルタイム同期中');
+                setupRealtimeSubscription();
+                syncWithSupabase();
                 console.log('Supabase初期化成功');
             } catch (error) {
                 console.error('Supabase初期化エラー:', error);
@@ -506,24 +508,27 @@
         }
 
         async function saveCase(caseData) {
+            console.log('事例保存開始:', caseData);
+            
             if (supabase) {
                 try {
                     const { data, error } = await supabase
                         .from('cases')
                         .insert([caseData]);
-                    
                     if (error) throw error;
                     console.log('Supabaseに保存成功');
+                    return; // Supabaseのリアルタイム更新で表示される
                 } catch (error) {
                     console.error('Supabase保存エラー:', error);
-                    // ローカルストレージにフォールバック
-                    cases.unshift(caseData);
-                    saveCases();
                 }
-            } else {
-                cases.unshift(caseData);
-                saveCases();
             }
+            
+            // ローカルストレージにフォールバック
+            cases.unshift(caseData);
+            saveCases();
+            displayCases();
+            updateStats();
+            updateCompanyStats();
         }
 
         function openModal() {
@@ -564,13 +569,6 @@
 
             await saveCase(caseData);
             closeModal();
-            
-            if (!supabase) {
-                displayCases();
-                updateStats();
-                updateCompanyStats();
-            }
-            
             alert('事例を投稿しました！');
         });
 
