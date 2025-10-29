@@ -585,7 +585,9 @@
                             JSON.parse(data.contents);
                             alert('接続テスト成功！OneDriveファイルにアクセスできました。');
                         } catch (jsonError) {
-                            alert('ファイルはアクセスできますが、JSON形式ではありません。正しいデータファイルをアップロードしてください。');
+                            console.log('Received content:', data.contents.substring(0, 500));
+                            const contentPreview = data.contents.substring(0, 200);
+                            alert(`ファイルはアクセスできますが、JSON形式ではありません。\n\n受信内容の先頭200文字:\n${contentPreview}\n\n原因:\n1. HTMLページが返されている\n2. ファイルが空または破損\n3. アクセス権限の問題`);
                         }
                     } else {
                         alert(`接続エラー: HTTP ${data.status.http_code}\n\nURLやアクセス権限を確認してください。\n\nヒント:\n1. OneDriveでファイルを右クリック\n2. 「共有」を選択\n3. 「リンクを知っているすべてのユーザー」を選択\n4. 「コピー」でURLを取得`);
