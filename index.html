@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>グループ会社 生成AI活用事例共有掲示板</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -268,6 +268,7 @@
         </div>
     </div>
 
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
         let supabase = null;
         let cases = [];
@@ -276,12 +277,13 @@
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
-            loadSupabaseConfig();
+            console.log('初期化開始');
             loadCompanies();
             loadCases();
             updateStats();
             updateCompanyStats();
             populateCompanySelectors();
+            loadSupabaseConfig();
         });
 
         // Supabase設定の読み込み
@@ -298,13 +300,17 @@
         // Supabase初期化
         function initSupabase(url, key) {
             try {
+                if (typeof window.supabase === 'undefined') {
+                    console.error('Supabaseライブラリが読み込まれていません');
+                    updateSyncStatus('disconnected', 'Supabaseライブラリエラー');
+                    return;
+                }
                 supabase = window.supabase.createClient(url, key);
-                updateSyncStatus('connected', 'Supabase接続: 正常 - リアルタイム同期中');
-                setupRealtimeSubscription();
-                syncWithSupabase();
+                updateSyncStatus('connected', 'Supabase接続: 正常');
+                console.log('Supabase初期化成功');
             } catch (error) {
                 console.error('Supabase初期化エラー:', error);
-                updateSyncStatus('disconnected', 'Supabase接続: エラー - 設定を確認してください');
+                updateSyncStatus('disconnected', 'Supabase接続エラー');
             }
         }
 
@@ -359,11 +365,16 @@
 
         // Supabase設定モーダル
         function openSupabaseModal() {
+            console.log('Supabaseモーダルを開く');
             const config = localStorage.getItem('supabaseConfig');
             if (config) {
-                const { url, key } = JSON.parse(config);
-                document.getElementById('supabaseUrl').value = url || '';
-                document.getElementById('supabaseKey').value = key || '';
+                try {
+                    const { url, key } = JSON.parse(config);
+                    document.getElementById('supabaseUrl').value = url || '';
+                    document.getElementById('supabaseKey').value = key || '';
+                } catch (e) {
+                    console.error('設定読み込みエラー:', e);
+                }
             }
             document.getElementById('supabaseModal').style.display = 'block';
         }
