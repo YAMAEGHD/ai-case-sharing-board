@@ -72,7 +72,7 @@
             <button class="btn btn-primary" onclick="openModal()">📝 新規事例投稿</button>
             <button class="btn btn-success" onclick="exportData()">📊 データエクスポート</button>
             <button class="btn btn-success" onclick="openCompanyModal()">👥 会社設定</button>
-            <button class="btn btn-success" onclick="openSyncModal()">☁️ OneDrive設定</button>
+            <button class="btn btn-success" onclick="openGitHubModal()">☁️ OneDrive設定</button>
             <button class="btn btn-success" onclick="syncData()">🔄 同期実行</button>
             <select id="companyFilter" onchange="filterCases()">
                 <option value="">全社</option>
@@ -542,6 +542,16 @@
                 statusDiv.className = 'sync-status sync-warning';
                 statusDiv.textContent = 'OneDrive同期: 未設定 - 「OneDrive設定」から共有フォルダのURLを設定してください';
             }
+        }
+
+        function openGitHubModal() {
+            document.getElementById('oneDriveUrl').value = syncSettings.url || '';
+            document.getElementById('syncInterval').value = syncSettings.interval || 60;
+            document.getElementById('syncModal').style.display = 'block';
+        }
+
+        function closeGitHubModal() {
+            document.getElementById('syncModal').style.display = 'none';
         }
 
         function openSyncModal() {
