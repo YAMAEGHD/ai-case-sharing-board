@@ -74,6 +74,7 @@
             <button class="btn btn-success" onclick="exportData()">📊 データエクスポート</button>
             <button class="btn btn-success" onclick="openCompanyModal()">👥 会社設定</button>
             <button class="btn btn-success" onclick="openSupabaseModal()">🔧 Supabase設定</button>
+            <button class="btn btn-success" onclick="manualSync()" id="syncBtn" style="display: none;">🔄 手動同期</button>
             <select id="companyFilter" onchange="filterCases()">
                 <option value="">全社</option>
             </select>
@@ -310,9 +311,13 @@
                     updateSyncStatus('disconnected', 'Supabaseライブラリエラー');
                     return;
                 }
+                if (supabase) {
+                    console.log('既存のSupabaseクライアントを使用');
+                    return;
+                }
                 supabase = window.supabase.createClient(url, key);
-                updateSyncStatus('connected', 'Supabase接続: 正常 - リアルタイム同期中');
-                setupRealtimeSubscription();
+                updateSyncStatus('connected', 'Supabase接続: 正常 - 手動同期モード');
+                document.getElementById('syncBtn').style.display = 'inline-block';
                 syncWithSupabase();
                 console.log('Supabase初期化成功');
             } catch (error) {
@@ -424,8 +429,18 @@
                 
                 if (error) throw error;
                 
+                console.log('テーブルの全データ:', data);
                 resultDiv.innerHTML = `<div style="color: green;">✅ 接続成功！ (${data.length}件の事例を発見)</div>`;
+                
+                // テストデータを表示
+                if (data.length > 0) {
+                    resultDiv.innerHTML += '<br><strong>データ一覧:</strong><br>';
+                    data.forEach(item => {
+                        resultDiv.innerHTML += `- ${item.title} (${item.author})<br>`;
+                    });
+                }
             } catch (error) {
+                console.error('接続エラー詳細:', error);
                 resultDiv.innerHTML = `<div style="color: red;">❌ 接続失敗: ${error.message}</div>`;
             }
         }
@@ -751,6 +766,16 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // 手動同期
+        function manualSync() {
+            if (supabase) {
+                console.log('手動同期実行');
+                syncWithSupabase();
+            } else {
+                alert('Supabaseが設定されていません');
+            }
         }
 
         // ローカルデータクリア
