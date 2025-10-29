@@ -279,11 +279,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('初期化開始');
             loadCompanies();
-            loadCases();
-            updateStats();
-            updateCompanyStats();
             populateCompanySelectors();
             loadSupabaseConfig();
+            // Supabase未設定の場合のみローカルデータを読み込み
+            setTimeout(() => {
+                if (!supabase) {
+                    loadCases();
+                    updateStats();
+                    updateCompanyStats();
+                }
+            }, 1000);
         });
 
         // Supabase設定の読み込み
@@ -330,10 +335,12 @@
                     { event: '*', schema: 'public', table: 'cases' }, 
                     (payload) => {
                         console.log('リアルタイム更新:', payload);
-                        syncWithSupabase();
+                        setTimeout(() => syncWithSupabase(), 500);
                     }
                 )
-                .subscribe();
+                .subscribe((status) => {
+                    console.log('購読ステータス:', status);
+                });
         }
 
         // Supabaseとの同期
@@ -341,6 +348,7 @@
             if (!supabase) return;
 
             try {
+                console.log('同期開始...');
                 const { data, error } = await supabase
                     .from('cases')
                     .select('*')
@@ -348,10 +356,12 @@
 
                 if (error) throw error;
 
+                console.log('Supabaseから取得したデータ:', data);
                 cases = data || [];
                 displayCases();
                 updateStats();
                 updateCompanyStats();
+                updateSyncStatus('connected', `Supabase接続: 正常 - ${cases.length}件の事例を同期中`);
             } catch (error) {
                 console.error('同期エラー:', error);
                 updateSyncStatus('disconnected', 'Supabase接続: 同期エラー');
@@ -410,11 +420,11 @@
 
             try {
                 const testClient = window.supabase.createClient(url, key);
-                const { data, error } = await testClient.from('cases').select('count', { count: 'exact' });
+                const { data, error } = await testClient.from('cases').select('*');
                 
                 if (error) throw error;
                 
-                resultDiv.innerHTML = '<div style="color: green;">✅ 接続成功！</div>';
+                resultDiv.innerHTML = `<div style="color: green;">✅ 接続成功！ (${data.length}件の事例を発見)</div>`;
             } catch (error) {
                 resultDiv.innerHTML = `<div style="color: red;">❌ 接続失敗: ${error.message}</div>`;
             }
@@ -496,9 +506,15 @@
 
         // 事例管理
         function loadCases() {
+            // Supabaseが設定されている場合はローカルデータを読み込まない
+            if (supabase) {
+                console.log('Supabase設定済みのためローカルデータをスキップ');
+                return;
+            }
             const stored = localStorage.getItem('cases');
             if (stored) {
                 cases = JSON.parse(stored);
+                console.log('ローカルデータを読み込み:', cases.length, '件');
             }
             displayCases();
         }
