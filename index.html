@@ -262,6 +262,7 @@
                     </div>
                     <button type="submit" class="btn btn-primary">💾 保存</button>
                     <button type="button" class="btn btn-success" onclick="testConnection()">🔍 接続テスト</button>
+                    <button type="button" class="btn" onclick="clearLocalData()" style="background: #dc3545; color: white;">🗑️ ローカルデータクリア</button>
                 </form>
                 <div id="connectionResult" style="margin-top: 15px;"></div>
             </div>
@@ -280,15 +281,14 @@
             console.log('初期化開始');
             loadCompanies();
             populateCompanySelectors();
+            
+            // 空の状態で表示を初期化
+            cases = [];
+            displayCases();
+            updateStats();
+            updateCompanyStats();
+            
             loadSupabaseConfig();
-            // Supabase未設定の場合のみローカルデータを読み込み
-            setTimeout(() => {
-                if (!supabase) {
-                    loadCases();
-                    updateStats();
-                    updateCompanyStats();
-                }
-            }, 1000);
         });
 
         // Supabase設定の読み込み
@@ -504,23 +504,25 @@
             }
         });
 
-        // 事例管理
+        // 事例管理（Supabase未設定時のみ）
         function loadCases() {
-            // Supabaseが設定されている場合はローカルデータを読み込まない
-            if (supabase) {
-                console.log('Supabase設定済みのためローカルデータをスキップ');
-                return;
-            }
+            if (supabase) return; // Supabase設定済みはスキップ
+            
             const stored = localStorage.getItem('cases');
             if (stored) {
                 cases = JSON.parse(stored);
                 console.log('ローカルデータを読み込み:', cases.length, '件');
+                displayCases();
+                updateStats();
+                updateCompanyStats();
             }
-            displayCases();
         }
 
         function saveCases() {
-            localStorage.setItem('cases', JSON.stringify(cases));
+            // Supabase使用時はローカル保存しない
+            if (!supabase) {
+                localStorage.setItem('cases', JSON.stringify(cases));
+            }
         }
 
         async function saveCase(caseData) {
@@ -749,6 +751,23 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // ローカルデータクリア
+        function clearLocalData() {
+            if (confirm('ローカルストレージのデータを全て削除しますか？')) {
+                localStorage.removeItem('cases');
+                console.log('ローカルデータをクリアしました');
+                if (supabase) {
+                    syncWithSupabase();
+                } else {
+                    cases = [];
+                    displayCases();
+                    updateStats();
+                    updateCompanyStats();
+                }
+                alert('ローカルデータをクリアしました！');
+            }
         }
 
         // モーダル外クリックで閉じる
