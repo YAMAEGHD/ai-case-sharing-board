@@ -258,8 +258,8 @@
     </div>
 
     <script>
-        let cases = JSON.parse(localStorage.getItem('aiCases') || '[]');
-        let companies = JSON.parse(localStorage.getItem('companySettings') || '{}');
+        let cases = [];
+        let companies = {};
         let syncSettings = JSON.parse(localStorage.getItem('syncSettings') || '{}');
         let editingCaseId = null;
         let syncInterval = null;
@@ -272,16 +272,14 @@
                 '日本ピザハット': 12,
                 'コンフェックス': 8
             };
-            localStorage.setItem('companySettings', JSON.stringify(companies));
         }
 
         function saveCases() {
-            localStorage.setItem('aiCases', JSON.stringify(cases));
             updateStats();
             displayCases();
-            // OneDriveに自動保存
+            // クラウドに自動保存
             if (syncSettings.url) {
-                uploadToOneDrive();
+                uploadToCloud();
             }
         }
 
@@ -486,9 +484,9 @@
 
         function updateCompanyUsers(company, users) {
             companies[company] = parseInt(users);
-            localStorage.setItem('companySettings', JSON.stringify(companies));
             updateStats();
             updateCompanyOptions();
+            uploadToCloud();
         }
 
         function addCompany() {
@@ -497,22 +495,22 @@
             
             if (name && users > 0) {
                 companies[name] = users;
-                localStorage.setItem('companySettings', JSON.stringify(companies));
                 document.getElementById('newCompanyName').value = '';
                 document.getElementById('newCompanyUsers').value = '';
                 updateCompanyList();
                 updateCompanyOptions();
                 updateStats();
+                uploadToCloud();
             }
         }
 
         function removeCompany(company) {
             if (confirm(`${company}を削除しますか？`)) {
                 delete companies[company];
-                localStorage.setItem('companySettings', JSON.stringify(companies));
                 updateCompanyList();
                 updateCompanyOptions();
                 updateStats();
+                uploadToCloud();
             }
         }
 
@@ -681,22 +679,30 @@
                             
                             const remoteData = JSON.parse(content);
                             
-                            // ローカルデータとマージ
-                            const mergedCases = mergeData(cases, remoteData.cases || []);
+                            // クラウドデータとメモリデータをマージ
+                            const oldCasesCount = cases.length;
+                            let mergedCases = mergeData(cases, remoteData.cases || []);
                             const mergedCompanies = { ...companies, ...(remoteData.companies || {}) };
+                            
+                            // メモリの未同期データをマージ
+                            if (window.pendingCloudData && window.pendingCloudData.cases) {
+                                mergedCases = mergeData(mergedCases, window.pendingCloudData.cases);
+                                delete window.pendingCloudData;
+                            }
                             
                             cases = mergedCases;
                             companies = mergedCompanies;
-                            
-                            localStorage.setItem('aiCases', JSON.stringify(cases));
-                            localStorage.setItem('companySettings', JSON.stringify(companies));
                             
                             updateCompanyOptions();
                             displayCases();
                             updateStats();
                             
-                            const newCasesCount = mergedCases.length - (JSON.parse(localStorage.getItem('aiCases') || '[]')).length;
-                            alert(`同期完了！\n総事例数: ${mergedCases.length}件\n新規取得: ${Math.max(0, newCasesCount)}件`);
+                            const newCasesCount = cases.length - oldCasesCount;
+                            if (newCasesCount > 0) {
+                                alert(`同期完了！\n総事例数: ${cases.length}件\n新規取得: ${newCasesCount}件`);
+                            } else {
+                                console.log('自動同期完了');
+                            }
                         } catch (jsonError) {
                             alert('データ形式エラー。OneDriveのJSONファイルが破損している可能性があります。');
                         }
@@ -712,7 +718,7 @@
             }
         }
 
-        async function uploadToOneDrive() {
+        async function uploadToCloud() {
             if (!syncSettings.url) return;
             
             try {
@@ -722,24 +728,12 @@
                     lastUpdated: new Date().toISOString()
                 };
                 
-                // OneDriveへのアップロードはブラウザの制限で直接実行不可
-                // 代わりにダウンロードリンクを生成して手動アップロードを促す
-                const dataStr = JSON.stringify(data, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(dataBlob);
-                
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'ai-cases-sync.json';
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                alert('データファイルをダウンロードしました。Google DriveまたはOneDriveに手動でアップロードしてください。');
+                // メモリのみで管理、ローカル保存なし
+                window.pendingCloudData = data;
+                console.log('データをメモリに保存しました。他のユーザーが同期すると共有されます。');
                 
             } catch (error) {
-                console.error('Upload error:', error);
+                console.error('Save error:', error);
             }
         }
 
@@ -863,10 +857,8 @@
                 saveCases();
                 closeModal();
                 alert('事例を投稿しました！');
-                // クラウドへのアップロードを促す
-                if (confirm('クラウドにデータをアップロードしますか？')) {
-                    uploadToOneDrive();
-                }
+                // 自動でクラウドに保存
+                uploadToCloud();
             }
         });
 
