@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>グループ会社 生成AI活用事例共有掲示板</title>
-
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -55,7 +54,6 @@
         .category-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
         .category-checkbox { display: flex; align-items: center; gap: 5px; }
         .category-checkbox input[type="checkbox"] { margin: 0; }
-        .multi-category { display: flex; flex-wrap: wrap; gap: 5px; }
         .sync-status { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 0.9em; }
         .sync-connected { background: #d4edda; border-color: #c3e6cb; color: #155724; }
         .sync-disconnected { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
@@ -263,7 +261,6 @@
                     </div>
                     <button type="submit" class="btn btn-primary">💾 保存</button>
                     <button type="button" class="btn btn-success" onclick="testConnection()">🔍 接続テスト</button>
-                    <button type="button" class="btn" onclick="clearLocalData()" style="background: #dc3545; color: white;">🗑️ ローカルデータクリア</button>
                 </form>
                 <div id="connectionResult" style="margin-top: 15px;"></div>
             </div>
@@ -275,24 +272,17 @@
         let supabase = null;
         let cases = [];
         let companies = [];
-        let subscription = null;
 
-        // 初期化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('初期化開始');
             loadCompanies();
             populateCompanySelectors();
-            
-            // 空の状態で表示を初期化
             cases = [];
             displayCases();
             updateStats();
             updateCompanyStats();
-            
             loadSupabaseConfig();
         });
 
-        // Supabase設定の読み込み
         function loadSupabaseConfig() {
             const config = localStorage.getItem('supabaseConfig');
             if (config) {
@@ -303,95 +293,51 @@
             }
         }
 
-        // Supabase初期化
         function initSupabase(url, key) {
             try {
-                if (typeof window.supabase === 'undefined') {
-                    console.error('Supabaseライブラリが読み込まれていません');
-                    updateSyncStatus('disconnected', 'Supabaseライブラリエラー');
-                    return;
-                }
-                if (supabase) {
-                    console.log('既存のSupabaseクライアントを使用');
-                    return;
-                }
+                if (supabase) return;
                 supabase = window.supabase.createClient(url, key);
                 updateSyncStatus('connected', 'Supabase接続: 正常 - 手動同期モード');
                 document.getElementById('syncBtn').style.display = 'inline-block';
                 syncWithSupabase();
-                console.log('Supabase初期化成功');
             } catch (error) {
                 console.error('Supabase初期化エラー:', error);
                 updateSyncStatus('disconnected', 'Supabase接続エラー');
             }
         }
 
-        // リアルタイム購読設定
-        function setupRealtimeSubscription() {
-            if (!supabase) return;
-
-            if (subscription) {
-                subscription.unsubscribe();
-            }
-
-            subscription = supabase
-                .channel('cases_channel')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'cases' }, 
-                    (payload) => {
-                        console.log('リアルタイム更新:', payload);
-                        setTimeout(() => syncWithSupabase(), 500);
-                    }
-                )
-                .subscribe((status) => {
-                    console.log('購読ステータス:', status);
-                });
-        }
-
-        // Supabaseとの同期
         async function syncWithSupabase() {
             if (!supabase) return;
-
             try {
-                console.log('同期開始...');
+                updateSyncStatus('connected', 'Supabase接続: 同期中...');
                 const { data, error } = await supabase
                     .from('cases')
                     .select('*')
                     .order('created_at', { ascending: false });
-
                 if (error) throw error;
-
-                console.log('Supabaseから取得したデータ:', data);
                 cases = data || [];
                 displayCases();
                 updateStats();
                 updateCompanyStats();
-                updateSyncStatus('connected', `Supabase接続: 正常 - ${cases.length}件の事例を同期中`);
+                updateSyncStatus('connected', `Supabase接続: 正常 - ${cases.length}件の事例を同期完了`);
             } catch (error) {
                 console.error('同期エラー:', error);
-                updateSyncStatus('disconnected', 'Supabase接続: 同期エラー');
+                updateSyncStatus('disconnected', `Supabase接続: エラー - ${error.message}`);
             }
         }
 
-        // 同期ステータス更新
         function updateSyncStatus(status, message) {
             const statusElement = document.getElementById('syncStatus');
             statusElement.className = `sync-status sync-${status}`;
             statusElement.textContent = message;
         }
 
-        // Supabase設定モーダル
         function openSupabaseModal() {
-            console.log('Supabaseモーダルを開く');
             const config = localStorage.getItem('supabaseConfig');
             if (config) {
-                try {
-                    const { url, key } = JSON.parse(config);
-                    document.getElementById('supabaseUrl').value = url || '';
-                    document.getElementById('supabaseKey').value = key || '';
-                } catch (e) {
-                    console.error('設定読み込みエラー:', e);
-                }
+                const { url, key } = JSON.parse(config);
+                document.getElementById('supabaseUrl').value = url || '';
+                document.getElementById('supabaseKey').value = key || '';
             }
             document.getElementById('supabaseModal').style.display = 'block';
         }
@@ -400,52 +346,34 @@
             document.getElementById('supabaseModal').style.display = 'none';
         }
 
-        // Supabase設定保存
         document.getElementById('supabaseForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const url = document.getElementById('supabaseUrl').value;
             const key = document.getElementById('supabaseKey').value;
-            
             localStorage.setItem('supabaseConfig', JSON.stringify({ url, key }));
             initSupabase(url, key);
             closeSupabaseModal();
             alert('Supabase設定を保存しました！');
         });
 
-        // 接続テスト
         async function testConnection() {
             const url = document.getElementById('supabaseUrl').value;
             const key = document.getElementById('supabaseKey').value;
             const resultDiv = document.getElementById('connectionResult');
-
             if (!url || !key) {
                 resultDiv.innerHTML = '<div style="color: red;">URLとAPI Keyを入力してください</div>';
                 return;
             }
-
             try {
                 const testClient = window.supabase.createClient(url, key);
                 const { data, error } = await testClient.from('cases').select('*');
-                
                 if (error) throw error;
-                
-                console.log('テーブルの全データ:', data);
                 resultDiv.innerHTML = `<div style="color: green;">✅ 接続成功！ (${data.length}件の事例を発見)</div>`;
-                
-                // テストデータを表示
-                if (data.length > 0) {
-                    resultDiv.innerHTML += '<br><strong>データ一覧:</strong><br>';
-                    data.forEach(item => {
-                        resultDiv.innerHTML += `- ${item.title} (${item.author})<br>`;
-                    });
-                }
             } catch (error) {
-                console.error('接続エラー詳細:', error);
                 resultDiv.innerHTML = `<div style="color: red;">❌ 接続失敗: ${error.message}</div>`;
             }
         }
 
-        // 会社管理
         function loadCompanies() {
             const stored = localStorage.getItem('companies');
             companies = stored ? JSON.parse(stored) : [
@@ -519,46 +447,20 @@
             }
         });
 
-        // 事例管理（Supabase未設定時のみ）
-        function loadCases() {
-            if (supabase) return; // Supabase設定済みはスキップ
-            
-            const stored = localStorage.getItem('cases');
-            if (stored) {
-                cases = JSON.parse(stored);
-                console.log('ローカルデータを読み込み:', cases.length, '件');
-                displayCases();
-                updateStats();
-                updateCompanyStats();
-            }
-        }
-
-        function saveCases() {
-            // Supabase使用時はローカル保存しない
-            if (!supabase) {
-                localStorage.setItem('cases', JSON.stringify(cases));
-            }
-        }
-
         async function saveCase(caseData) {
-            console.log('事例保存開始:', caseData);
-            
             if (supabase) {
                 try {
                     const { data, error } = await supabase
                         .from('cases')
                         .insert([caseData]);
                     if (error) throw error;
-                    console.log('Supabaseに保存成功');
-                    return; // Supabaseのリアルタイム更新で表示される
+                    syncWithSupabase();
+                    return;
                 } catch (error) {
                     console.error('Supabase保存エラー:', error);
                 }
             }
-            
-            // ローカルストレージにフォールバック
             cases.unshift(caseData);
-            saveCases();
             displayCases();
             updateStats();
             updateCompanyStats();
@@ -575,15 +477,12 @@
 
         document.getElementById('caseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
             const categories = Array.from(document.querySelectorAll('.category-checkbox input:checked'))
                 .map(cb => cb.value);
-            
             if (categories.length === 0) {
                 alert('カテゴリを1つ以上選択してください');
                 return;
             }
-
             const caseData = {
                 id: Date.now(),
                 title: document.getElementById('caseTitle').value,
@@ -593,13 +492,12 @@
                 categories: categories,
                 content: document.getElementById('caseContent').value,
                 effect: document.getElementById('caseEffect').value,
-                effectPercent: parseInt(document.getElementById('caseEffectPercent').value),
+                effectpercent: parseInt(document.getElementById('caseEffectPercent').value),
                 users: parseInt(document.getElementById('caseUsers').value) || 1,
                 tips: document.getElementById('caseTips').value,
                 date: new Date().toISOString().split('T')[0],
                 created_at: new Date().toISOString()
             };
-
             await saveCase(caseData);
             closeModal();
             alert('事例を投稿しました！');
@@ -611,7 +509,6 @@
                 container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">まだ事例が投稿されていません。最初の事例を投稿してみましょう！</p>';
                 return;
             }
-
             container.innerHTML = cases.map(case_ => `
                 <div class="case-item">
                     <div class="case-header">
@@ -629,7 +526,7 @@
                         ${case_.content.replace(/\n/g, '<br>')}
                     </div>
                     <div class="case-effect">
-                        <strong>📈 効果・成果 (${case_.effectPercent}%改善):</strong><br>
+                        <strong>📈 効果・成果 (${case_.effectpercent}%改善):</strong><br>
                         ${case_.effect.replace(/\n/g, '<br>')}
                         ${case_.users > 1 ? `<br><strong>👥 利用者数:</strong> ${case_.users}人` : ''}
                     </div>
@@ -647,7 +544,6 @@
             const companyFilter = document.getElementById('companyFilter').value;
             const categoryFilter = document.getElementById('categoryFilter').value;
             const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-
             const filtered = cases.filter(case_ => {
                 const matchCompany = !companyFilter || case_.company === companyFilter;
                 const matchCategory = !categoryFilter || case_.categories.includes(categoryFilter);
@@ -656,16 +552,13 @@
                     case_.content.toLowerCase().includes(searchTerm) ||
                     case_.effect.toLowerCase().includes(searchTerm) ||
                     case_.author.toLowerCase().includes(searchTerm);
-                
                 return matchCompany && matchCategory && matchSearch;
             });
-
             const container = document.getElementById('casesList');
             if (filtered.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">条件に一致する事例が見つかりませんでした。</p>';
                 return;
             }
-
             container.innerHTML = filtered.map(case_ => `
                 <div class="case-item">
                     <div class="case-header">
@@ -683,7 +576,7 @@
                         ${case_.content.replace(/\n/g, '<br>')}
                     </div>
                     <div class="case-effect">
-                        <strong>📈 効果・成果 (${case_.effectPercent}%改善):</strong><br>
+                        <strong>📈 効果・成果 (${case_.effectpercent}%改善):</strong><br>
                         ${case_.effect.replace(/\n/g, '<br>')}
                         ${case_.users > 1 ? `<br><strong>👥 利用者数:</strong> ${case_.users}人` : ''}
                     </div>
@@ -700,9 +593,8 @@
         function updateStats() {
             const totalCases = cases.length;
             const totalCompanies = new Set(cases.map(c => c.company)).size;
-            const avgEffect = totalCases > 0 ? Math.round(cases.reduce((sum, c) => sum + c.effectPercent, 0) / totalCases) : 0;
+            const avgEffect = totalCases > 0 ? Math.round(cases.reduce((sum, c) => sum + c.effectpercent, 0) / totalCases) : 0;
             const totalUsers = cases.reduce((sum, c) => sum + (c.users || 1), 0);
-
             document.getElementById('totalCases').textContent = totalCases;
             document.getElementById('totalCompanies').textContent = totalCompanies;
             document.getElementById('avgEffect').textContent = avgEffect + '%';
@@ -716,20 +608,17 @@
                     stats[case_.company] = { count: 0, totalEffect: 0, users: 0 };
                 }
                 stats[case_.company].count++;
-                stats[case_.company].totalEffect += case_.effectPercent;
+                stats[case_.company].totalEffect += case_.effectpercent;
                 stats[case_.company].users += case_.users || 1;
             });
-
             const container = document.getElementById('companyStats');
             if (Object.keys(stats).length === 0) {
                 container.innerHTML = '<p style="color: #666;">データがありません</p>';
                 return;
             }
-
             container.innerHTML = Object.entries(stats).map(([company, data]) => {
                 const avgEffect = Math.round(data.totalEffect / data.count);
                 const effectClass = avgEffect >= 70 ? 'effect-high' : avgEffect >= 40 ? 'effect-medium' : 'effect-low';
-                
                 return `
                     <div class="company-row">
                         <div>
@@ -756,7 +645,6 @@
                 cases: cases,
                 companies: companies
             };
-            
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -768,34 +656,14 @@
             URL.revokeObjectURL(url);
         }
 
-        // 手動同期
         function manualSync() {
             if (supabase) {
-                console.log('手動同期実行');
                 syncWithSupabase();
             } else {
                 alert('Supabaseが設定されていません');
             }
         }
 
-        // ローカルデータクリア
-        function clearLocalData() {
-            if (confirm('ローカルストレージのデータを全て削除しますか？')) {
-                localStorage.removeItem('cases');
-                console.log('ローカルデータをクリアしました');
-                if (supabase) {
-                    syncWithSupabase();
-                } else {
-                    cases = [];
-                    displayCases();
-                    updateStats();
-                    updateCompanyStats();
-                }
-                alert('ローカルデータをクリアしました！');
-            }
-        }
-
-        // モーダル外クリックで閉じる
         window.onclick = function(event) {
             const modals = ['caseModal', 'companyModal', 'supabaseModal'];
             modals.forEach(modalId => {
