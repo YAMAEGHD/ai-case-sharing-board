@@ -72,7 +72,7 @@
             <button class="btn btn-primary" onclick="openModal()">📝 新規事例投稿</button>
             <button class="btn btn-success" onclick="exportData()">📊 データエクスポート</button>
             <button class="btn btn-success" onclick="openCompanyModal()">👥 会社設定</button>
-            <button class="btn btn-success" onclick="openGitHubModal()">☁️ OneDrive設定</button>
+            <button class="btn btn-success" onclick="openGitHubModal()">☁️ クラウド設定</button>
             <button class="btn btn-success" onclick="syncData()">🔄 同期実行</button>
             <select id="companyFilter" onchange="filterCases()">
                 <option value="">全社</option>
@@ -93,7 +93,7 @@
 
         <div class="content">
             <div id="syncStatus" class="sync-status sync-warning">
-                OneDrive同期: 未設定 - 「OneDrive設定」から共有フォルダのURLを設定してください
+                クラウド同期: 未設定 - 「クラウド設定」から共有ファイルのURLを設定してください
             </div>
 
             <div class="stats">
@@ -129,13 +129,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <span class="close" onclick="closeSyncModal()">&times;</span>
-                <h2>OneDrive同期設定</h2>
+                <h2>クラウド同期設定</h2>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>共有フォルダURL</label>
-                    <input type="text" id="oneDriveUrl" placeholder="OneDriveの共有フォルダURL">
-                    <small>管理者から提供されたOneDrive共有フォルダのURLを入力してください</small>
+                    <label>共有ファイルURL</label>
+                    <input type="text" id="oneDriveUrl" placeholder="Google DriveまたはOneDriveの共有ファイルURL">
+                    <small>管理者から提供された共有ファイルのURLを入力してください</small>
                 </div>
                 <div class="form-group">
                     <label>同期間隔（秒）</label>
@@ -536,11 +536,12 @@
         function updateSyncStatus() {
             const statusDiv = document.getElementById('syncStatus');
             if (syncSettings.url) {
+                const cloudType = syncSettings.url.includes('drive.google.com') ? 'Google Drive' : 'OneDrive';
                 statusDiv.className = 'sync-status sync-connected';
-                statusDiv.textContent = `OneDrive同期: 接続済み - ${syncSettings.interval || 60}秒間隔で自動同期中`;
+                statusDiv.textContent = `${cloudType}同期: 接続済み - ${syncSettings.interval || 60}秒間隔で自動同期中`;
             } else {
                 statusDiv.className = 'sync-status sync-warning';
-                statusDiv.textContent = 'OneDrive同期: 未設定 - 「OneDrive設定」から共有フォルダのURLを設定してください';
+                statusDiv.textContent = 'クラウド同期: 未設定 - 「クラウド設定」から共有ファイルのURLを設定してください';
             }
         }
 
@@ -572,7 +573,7 @@
             localStorage.setItem('syncSettings', JSON.stringify(syncSettings));
             updateSyncStatus();
             startAutoSync();
-            alert('OneDrive設定を保存しました！');
+            alert('クラウド設定を保存しました！');
             closeSyncModal();
         }
 
@@ -583,8 +584,8 @@
             }
             
             // URL形式の事前チェック
-            if (!syncSettings.url.includes('sharepoint.com') && !syncSettings.url.includes('onedrive.live.com') && !syncSettings.url.includes('1drv.ms')) {
-                alert('OneDriveURLを確認してください。\n\n正しい形式例:\n- https://xxx.sharepoint.com/:u:/g/personal/...\n- https://onedrive.live.com/...\n- https://1drv.ms/...');
+            if (!syncSettings.url.includes('drive.google.com') && !syncSettings.url.includes('sharepoint.com') && !syncSettings.url.includes('onedrive.live.com') && !syncSettings.url.includes('1drv.ms')) {
+                alert('共有URLを確認してください。\n\n正しい形式例:\n- https://drive.google.com/file/d/.../view\n- https://xxx.sharepoint.com/:u:/g/personal/...\n- https://onedrive.live.com/...\n- https://1drv.ms/...');
                 return;
             }
             
@@ -704,7 +705,7 @@
                 link.click();
                 document.body.removeChild(link);
                 
-                alert('データファイルをダウンロードしました。OneDrive共有フォルダに手動でアップロードしてください。');
+                alert('データファイルをダウンロードしました。Google DriveまたはOneDriveに手動でアップロードしてください。');
                 
             } catch (error) {
                 console.error('Upload error:', error);
@@ -726,9 +727,16 @@
 
         function convertToDownloadUrl(shareUrl) {
             try {
-                if (shareUrl.includes('sharepoint.com') && shareUrl.includes('/:u:/')) {
-                    // SharePointの共有URLを直接ダウンロードURLに変換
-                    // 元のURLをそのまま使用し、download=1パラメータを追加
+                if (shareUrl.includes('drive.google.com')) {
+                    // Google Drive共有URLを直接ダウンロードURLに変換
+                    // https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+                    // → https://drive.google.com/uc?export=download&id=FILE_ID
+                    const fileIdMatch = shareUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (fileIdMatch) {
+                        const fileId = fileIdMatch[1];
+                        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    }
+                } else if (shareUrl.includes('sharepoint.com') && shareUrl.includes('/:u:/')) {
                     if (shareUrl.includes('?')) {
                         return shareUrl + '&download=1';
                     } else {
@@ -824,8 +832,8 @@
                 saveCases();
                 closeModal();
                 alert('事例を投稿しました！');
-                // OneDriveへのアップロードを促す
-                if (confirm('OneDriveにデータをアップロードしますか？')) {
+                // クラウドへのアップロードを促す
+                if (confirm('クラウドにデータをアップロードしますか？')) {
                     uploadToOneDrive();
                 }
             }
