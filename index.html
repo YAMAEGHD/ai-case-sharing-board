@@ -600,7 +600,6 @@
                 console.log('Response status:', data.status);
                 console.log('Content type:', data.status.content_type);
                 console.log('Content preview:', data.contents.substring(0, 300));
-                            const contentPreview = data.contents.substring(0, 200);
                             const contentPreview = data.contents.substring(0, 300).replace(/\n/g, '\\n');
                             const isHtml = data.contents.toLowerCase().includes('<html') || data.contents.toLowerCase().includes('<!doctype');
                             
