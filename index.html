@@ -692,9 +692,16 @@
         }
 
         function convertToDownloadUrl(shareUrl) {
-            // OneDrive共有URLを直接ダウンロードURLに変換
+            // OneDrive/SharePoint共有URLをダウンロードURLに変換
             try {
-                if (shareUrl.includes('1drv.ms/')) {
+                if (shareUrl.includes('sharepoint.com') && shareUrl.includes('/:u:/')) {
+                    // SharePointのOneDrive URLの場合
+                    if (shareUrl.includes('?')) {
+                        return shareUrl + '&download=1';
+                    } else {
+                        return shareUrl + '?download=1';
+                    }
+                } else if (shareUrl.includes('1drv.ms/')) {
                     // 1drv.ms 短縮 URLの場合
                     const fileId = shareUrl.split('/').pop();
                     return `https://api.onedrive.com/v1.0/shares/s!${fileId}/root/content`;
@@ -706,8 +713,12 @@
                         return `https://api.onedrive.com/v1.0/drive/items/${resid}/content`;
                     }
                 } else if (shareUrl.includes('sharepoint.com')) {
-                    // SharePoint URLの場合
-                    return shareUrl.replace('?', '?download=1&');
+                    // その他のSharePoint URL
+                    if (shareUrl.includes('?')) {
+                        return shareUrl + '&download=1';
+                    } else {
+                        return shareUrl + '?download=1';
+                    }
                 }
                 
                 // 直接ダウンロードリンクの場合
