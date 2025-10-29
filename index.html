@@ -720,19 +720,13 @@
         function convertToDownloadUrl(shareUrl) {
             try {
                 if (shareUrl.includes('sharepoint.com') && shareUrl.includes('/:u:/')) {
-                    // SharePoint URLを直接ダウンロード用に変換
-                    // https://xxx.sharepoint.com/:u:/g/personal/xxx/xxx → 直接ダウンロード
-                    let downloadUrl = shareUrl.replace('/:u:/', '/personal/');
-                    downloadUrl = downloadUrl.replace('/g/personal/', '/personal/');
-                    
-                    // クエリパラメータをダウンロード用に変更
-                    if (downloadUrl.includes('?')) {
-                        downloadUrl = downloadUrl.split('?')[0] + '?download=1';
+                    // SharePointの共有URLを直接ダウンロードURLに変換
+                    // 元のURLをそのまま使用し、download=1パラメータを追加
+                    if (shareUrl.includes('?')) {
+                        return shareUrl + '&download=1';
                     } else {
-                        downloadUrl = downloadUrl + '?download=1';
+                        return shareUrl + '?download=1';
                     }
-                    
-                    return downloadUrl;
                 } else if (shareUrl.includes('1drv.ms/')) {
                     const fileId = shareUrl.split('/').pop();
                     return `https://api.onedrive.com/v1.0/shares/s!${fileId}/root/content`;
