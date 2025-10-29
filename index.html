@@ -582,6 +582,12 @@
                 return;
             }
             
+            // URL形式の事前チェック
+            if (!syncSettings.url.includes('sharepoint.com') && !syncSettings.url.includes('onedrive.live.com') && !syncSettings.url.includes('1drv.ms')) {
+                alert('OneDriveURLを確認してください。\n\n正しい形式例:\n- https://xxx.sharepoint.com/:u:/g/personal/...\n- https://onedrive.live.com/...\n- https://1drv.ms/...');
+                return;
+            }
+            
             try {
                 // CORS回避のためプロキシサービスを使用
                 const proxyUrl = 'https://api.allorigins.win/get?url=';
@@ -610,11 +616,12 @@
                         alert(`接続エラー: HTTP ${data.status.http_code}\n\nURLやアクセス権限を確認してください。\n\nヒント:\n1. OneDriveでファイルを右クリック\n2. 「共有」を選択\n3. 「リンクを知っているすべてのユーザー」を選択\n4. 「コピー」でURLを取得`);
                     }
                 } else {
-                    alert('プロキシサービスエラー。しばらく待ってから再試行してください。');
+                    const errorText = await response.text();
+                    alert(`プロキシサービスエラー: ${response.status}\n\nエラー内容: ${errorText.substring(0, 200)}\n\n元URL: ${syncSettings.url}\n変換URL: ${downloadUrl}`);
                 }
             } catch (error) {
                 console.error('Test sync error:', error);
-                alert(`接続エラー: ${error.message}\n\nOneDrive URLの形式を確認してください。\n\n正しい形式例:\n- https://1drv.ms/u/s!xxxxxxxxx\n- https://onedrive.live.com/...\n- https://xxx.sharepoint.com/...`);
+                alert(`接続エラー: ${error.message}\n\n元URL: ${syncSettings.url}\n変換URL: ${downloadUrl}\n\n考えられる原因:\n1. SharePointの認証が必要\n2. アクセス権限が不十分\n3. ファイルが存在しない\n4. ネットワークの問題`);
             }
         }
 
