@@ -585,9 +585,16 @@
                             JSON.parse(data.contents);
                             alert('接続テスト成功！OneDriveファイルにアクセスできました。');
                         } catch (jsonError) {
-                            console.log('Received content:', data.contents.substring(0, 500));
+                            console.log('Original URL:', syncSettings.url);
+                console.log('Download URL:', downloadUrl);
+                console.log('Response status:', data.status);
+                console.log('Content type:', data.status.content_type);
+                console.log('Content preview:', data.contents.substring(0, 300));
                             const contentPreview = data.contents.substring(0, 200);
-                            alert(`ファイルはアクセスできますが、JSON形式ではありません。\n\n受信内容の先頭200文字:\n${contentPreview}\n\n原因:\n1. HTMLページが返されている\n2. ファイルが空または破損\n3. アクセス権限の問題`);
+                            const contentPreview = data.contents.substring(0, 300).replace(/\n/g, '\\n');
+                            const isHtml = data.contents.toLowerCase().includes('<html') || data.contents.toLowerCase().includes('<!doctype');
+                            
+                            alert(`デバッグ情報:\n\n元URL: ${syncSettings.url}\n変換URL: ${downloadUrl}\n\nHTTPコード: ${data.status.http_code}\nコンテンツタイプ: ${data.status.content_type || 'unknown'}\n\n受信内容(先頭300文字):\n${contentPreview}\n\n${isHtml ? 'HTMLページが返されています。ファイルの直接リンクが必要です。' : 'JSON形式ではありません。'}`);
                         }
                     } else {
                         alert(`接続エラー: HTTP ${data.status.http_code}\n\nURLやアクセス権限を確認してください。\n\nヒント:\n1. OneDriveでファイルを右クリック\n2. 「共有」を選択\n3. 「リンクを知っているすべてのユーザー」を選択\n4. 「コピー」でURLを取得`);
