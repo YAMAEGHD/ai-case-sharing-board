@@ -599,8 +599,16 @@
                     const data = await response.json();
                     if (data.status.http_code === 200) {
                         try {
-                            JSON.parse(data.contents);
-                            alert('接続テスト成功！OneDriveファイルにアクセスできました。');
+                            let content = data.contents;
+                            
+                            // Google Driveのbase64データをデコード
+                            if (content.startsWith('data:application/octet-stream;base64,')) {
+                                const base64Data = content.replace('data:application/octet-stream;base64,', '');
+                                content = atob(base64Data);
+                            }
+                            
+                            JSON.parse(content);
+                            alert('接続テスト成功！クラウドファイルにアクセスできました。');
                         } catch (jsonError) {
                             console.log('Original URL:', syncSettings.url);
                             console.log('Download URL:', downloadUrl);
@@ -608,8 +616,20 @@
                             console.log('Content type:', data.status.content_type);
                             console.log('Content preview:', data.contents.substring(0, 300));
                             
-                            const contentPreview = data.contents.substring(0, 300).replace(/\n/g, '\\n');
-                            const isHtml = data.contents.toLowerCase().includes('<html') || data.contents.toLowerCase().includes('<!doctype');
+                            let content = data.contents;
+                            
+                            // Google Driveのbase64データをデコードして表示
+                            if (content.startsWith('data:application/octet-stream;base64,')) {
+                                const base64Data = content.replace('data:application/octet-stream;base64,', '');
+                                try {
+                                    content = atob(base64Data);
+                                } catch (decodeError) {
+                                    content = 'デコードエラー: ' + content.substring(0, 100);
+                                }
+                            }
+                            
+                            const contentPreview = content.substring(0, 300).replace(/\n/g, '\\n');
+                            const isHtml = content.toLowerCase().includes('<html') || content.toLowerCase().includes('<!doctype');
                             
                             const debugInfo = `デバッグ情報:\n\n元URL: ${syncSettings.url}\n変換URL: ${downloadUrl}\n\nHTTPコード: ${data.status.http_code}\nコンテンツタイプ: ${data.status.content_type || 'unknown'}\n\n受信内容(先頭300文字):\n${contentPreview}\n\n${isHtml ? 'HTMLページが返されています。ファイルの直接リンクが必要です。' : 'JSON形式ではありません。'}`;
                             
@@ -648,7 +668,15 @@
                     const data = await response.json();
                     if (data.status.http_code === 200) {
                         try {
-                            const remoteData = JSON.parse(data.contents);
+                            let content = data.contents;
+                            
+                            // Google Driveのbase64データをデコード
+                            if (content.startsWith('data:application/octet-stream;base64,')) {
+                                const base64Data = content.replace('data:application/octet-stream;base64,', '');
+                                content = atob(base64Data);
+                            }
+                            
+                            const remoteData = JSON.parse(content);
                             
                             // ローカルデータとマージ
                             const mergedCases = mergeData(cases, remoteData.cases || []);
