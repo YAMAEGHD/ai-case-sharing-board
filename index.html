@@ -867,6 +867,12 @@
         updateSyncStatus();
         displayCases();
         updateStats();
+        
+        // 初回読み込み時にクラウドからデータを取得
+        if (syncSettings.url) {
+            syncData();
+        }
+        
         startAutoSync();
 
         // モーダル外クリックで閉じる
