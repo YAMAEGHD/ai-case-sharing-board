@@ -543,7 +543,7 @@
             }).join('');
         }
 
-        function removeCompany(companyName) {
+        async function removeCompany(companyName) {
             if (confirm(`「${companyName}」を削除しますか？`)) {
                 companies = companies.filter(c => {
                     const name = typeof c === 'string' ? c : c.name;
