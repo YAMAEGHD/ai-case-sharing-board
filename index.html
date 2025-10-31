@@ -69,7 +69,7 @@
 
         <div class="controls">
             <button class="btn btn-primary" onclick="openModal()">📝 新規事例投稿</button>
-            <button class="btn btn-success" onclick="exportData()">📊 データエクスポート</button>
+            <button class="btn btn-success" onclick="exportData()">📊 CSVエクスポート</button>
             <button class="btn btn-success" onclick="openCompanyModal()">👥 会社設定</button>
             <button class="btn btn-success" onclick="openSupabaseModal()">🔧 Supabase設定</button>
             <button class="btn btn-success" onclick="manualSync()" id="syncBtn" style="display: none;">🔄 手動同期</button>
@@ -233,6 +233,10 @@
                         <label for="companyName">会社名 *</label>
                         <input type="text" id="companyName" required placeholder="例: ヤマエ久野株式会社">
                     </div>
+                    <div class="form-group">
+                        <label for="companyUsers">利用者数 *</label>
+                        <input type="number" id="companyUsers" required min="1" value="1" placeholder="会社の利用者数">
+                    </div>
                     <button type="submit" class="btn btn-primary">💾 保存</button>
                 </form>
                 <hr>
@@ -376,12 +380,22 @@
 
         function loadCompanies() {
             const stored = localStorage.getItem('companies');
-            companies = stored ? JSON.parse(stored) : [
-                'ヤマエ久野株式会社',
-                '株式会社ヤマエフーズ',
-                '株式会社ヤマエロジスティクス',
-                'ヤマエ食品工業株式会社'
-            ];
+            if (stored) {
+                const data = JSON.parse(stored);
+                // 旧形式（配列）から新形式（オブジェクト）への変換
+                if (Array.isArray(data)) {
+                    companies = data.map(name => ({ name, users: 1 }));
+                } else {
+                    companies = data;
+                }
+            } else {
+                companies = [
+                    { name: 'ヤマエ久野株式会社', users: 1 },
+                    { name: '株式会社ヤマエフーズ', users: 1 },
+                    { name: '株式会社ヤマエロジスティクス', users: 1 },
+                    { name: 'ヤマエ食品工業株式会社', users: 1 }
+                ];
+            }
         }
 
         function saveCompanies() {
@@ -399,8 +413,9 @@
                 }
                 companies.forEach(company => {
                     const option = document.createElement('option');
-                    option.value = company;
-                    option.textContent = company;
+                    const companyName = typeof company === 'string' ? company : company.name;
+                    option.value = companyName;
+                    option.textContent = companyName;
                     select.appendChild(option);
                 });
             });
@@ -417,34 +432,81 @@
 
         function displayCompaniesList() {
             const list = document.getElementById('companiesList');
-            list.innerHTML = companies.map(company => 
-                `<div class="company-row">
-                    <span>${company}</span>
-                    <button class="btn" onclick="removeCompany('${company}')" style="background: #dc3545; color: white; padding: 5px 10px;">削除</button>
-                </div>`
-            ).join('');
+            list.innerHTML = companies.map((company, index) => {
+                const companyName = typeof company === 'string' ? company : company.name;
+                const companyUsers = typeof company === 'string' ? 1 : company.users;
+                return `<div class="company-row">
+                    <div>
+                        <strong>${companyName}</strong><br>
+                        <small>利用者数: ${companyUsers}人</small>
+                    </div>
+                    <div>
+                        <button class="btn" onclick="editCompany(${index})" style="background: #007bff; color: white; padding: 5px 10px; margin-right: 5px;">編集</button>
+                        <button class="btn" onclick="removeCompany('${companyName}')" style="background: #dc3545; color: white; padding: 5px 10px;">削除</button>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function removeCompany(companyName) {
             if (confirm(`「${companyName}」を削除しますか？`)) {
-                companies = companies.filter(c => c !== companyName);
+                companies = companies.filter(c => {
+                    const name = typeof c === 'string' ? c : c.name;
+                    return name !== companyName;
+                });
                 saveCompanies();
                 populateCompanySelectors();
                 displayCompaniesList();
             }
+        }
+
+        function editCompany(index) {
+            const company = companies[index];
+            const companyName = typeof company === 'string' ? company : company.name;
+            const companyUsers = typeof company === 'string' ? 1 : company.users;
+            
+            document.getElementById('companyName').value = companyName;
+            document.getElementById('companyUsers').value = companyUsers;
+            
+            // 編集モードを記録
+            document.getElementById('companyForm').dataset.editIndex = index;
         }
 
         document.getElementById('companyForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const companyName = document.getElementById('companyName').value.trim();
-            if (companyName && !companies.includes(companyName)) {
-                companies.push(companyName);
-                saveCompanies();
-                populateCompanySelectors();
-                displayCompaniesList();
-                document.getElementById('companyName').value = '';
-                alert('会社を追加しました！');
+            const companyUsers = parseInt(document.getElementById('companyUsers').value) || 1;
+            const editIndex = this.dataset.editIndex;
+            
+            if (!companyName) return;
+            
+            const newCompany = { name: companyName, users: companyUsers };
+            
+            if (editIndex !== undefined) {
+                // 編集モード
+                companies[editIndex] = newCompany;
+                delete this.dataset.editIndex;
+                alert('会社情報を更新しました！');
+            } else {
+                // 新規追加モード
+                const exists = companies.some(c => {
+                    const name = typeof c === 'string' ? c : c.name;
+                    return name === companyName;
+                });
+                if (!exists) {
+                    companies.push(newCompany);
+                    alert('会社を追加しました！');
+                } else {
+                    alert('この会社名は既に登録されています');
+                    return;
+                }
             }
+            
+            saveCompanies();
+            populateCompanySelectors();
+            displayCompaniesList();
+            document.getElementById('companyName').value = '';
+            document.getElementById('companyUsers').value = '1';
         });
 
         async function saveCase(caseData) {
@@ -639,17 +701,45 @@
         }
 
         function exportData() {
-            const data = {
-                exportDate: new Date().toISOString(),
-                totalCases: cases.length,
-                cases: cases,
-                companies: companies
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            if (cases.length === 0) {
+                alert('エクスポートするデータがありません');
+                return;
+            }
+            
+            // CSVヘッダー
+            const headers = [
+                'ID', 'タイトル', '会社名', '部署名', '投稿者', 'カテゴリ', 
+                '事例内容', '効果・成果', '効果率(%)', '利用者数', 
+                '活用のコツ', '投稿日', '作成日時'
+            ];
+            
+            // CSVデータ作成
+            const csvData = cases.map(case_ => [
+                case_.id,
+                `"${case_.title.replace(/"/g, '""')}"`,
+                `"${case_.company.replace(/"/g, '""')}"`,
+                `"${(case_.department || '').replace(/"/g, '""')}"`,
+                `"${case_.author.replace(/"/g, '""')}"`,
+                `"${case_.categories.join(', ').replace(/"/g, '""')}"`,
+                `"${case_.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                `"${case_.effect.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                case_.effectpercent,
+                case_.users || 1,
+                `"${(case_.tips || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                case_.date,
+                case_.created_at
+            ]);
+            
+            // CSV文字列作成
+            const csvContent = [headers.join(','), ...csvData.map(row => row.join(','))].join('\n');
+            
+            // BOMを追加してExcelで文字化けを防ぐ
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `ai-cases-export-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `ai-cases-export-${new Date().toISOString().split('T')[0]}.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
