@@ -382,10 +382,13 @@
             const stored = localStorage.getItem('companies');
             if (stored) {
                 const data = JSON.parse(stored);
-                // 旧形式（配列）から新形式（オブジェクト）への変換
-                if (Array.isArray(data)) {
+                // 旧形式（文字列配列）から新形式（オブジェクト配列）への変換
+                if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
+                    // 文字列配列の場合のみ変換
                     companies = data.map(name => ({ name, users: 1 }));
+                    saveCompanies(); // 変換後に保存して次回からは変換不要に
                 } else {
+                    // 既にオブジェクト形式の場合
                     companies = data;
                 }
             } else {
@@ -395,6 +398,7 @@
                     { name: '株式会社ヤマエロジスティクス', users: 1 },
                     { name: 'ヤマエ食品工業株式会社', users: 1 }
                 ];
+                saveCompanies(); // 初期データを保存
             }
         }
 
