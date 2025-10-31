@@ -457,6 +457,8 @@
                 saveCompanies();
                 populateCompanySelectors();
                 displayCompaniesList();
+                updateStats();
+                updateCompanyStats();
             }
         }
 
@@ -505,6 +507,8 @@
             saveCompanies();
             populateCompanySelectors();
             displayCompaniesList();
+            updateStats();
+            updateCompanyStats();
             document.getElementById('companyName').value = '';
             document.getElementById('companyUsers').value = '1';
         });
@@ -668,44 +672,61 @@
 
         function updateCompanyStats() {
             const container = document.getElementById('companyStats');
-            if (companies.length === 0) {
+            
+            if (!companies || companies.length === 0) {
                 container.innerHTML = '<p style="color: #666;">会社が登録されていません</p>';
                 return;
             }
             
-            // 登録済み会社全てを表示
-            container.innerHTML = companies.map(company => {
-                const companyName = typeof company === 'string' ? company : company.name;
-                const companyUsers = typeof company === 'string' ? 1 : company.users;
-                
-                // この会社の事例データを集計
-                const companyCases = cases.filter(case_ => case_.company === companyName);
-                const caseCount = companyCases.length;
-                const totalEffect = companyCases.reduce((sum, case_) => sum + case_.effectpercent, 0);
-                const avgEffect = caseCount > 0 ? Math.round(totalEffect / caseCount) : 0;
-                const effectClass = avgEffect >= 70 ? 'effect-high' : avgEffect >= 40 ? 'effect-medium' : 'effect-low';
-                
-                return `
-                    <div class="company-row">
-                        <div>
-                            <div class="company-name">${companyName}</div>
-                            <div style="font-size: 0.9em; color: #666;">
-                                事例数: ${caseCount} | 登録利用者: ${companyUsers}人
+            try {
+                const statsHtml = companies.map(company => {
+                    // 会社名と利用者数を安全に取得
+                    let companyName, companyUsers;
+                    if (typeof company === 'string') {
+                        companyName = company;
+                        companyUsers = 1;
+                    } else if (company && company.name) {
+                        companyName = company.name;
+                        companyUsers = company.users || 1;
+                    } else {
+                        console.error('不正な会社データ:', company);
+                        return '';
+                    }
+                    
+                    // この会社の事例データを集計
+                    const companyCases = cases.filter(case_ => case_.company === companyName);
+                    const caseCount = companyCases.length;
+                    const totalEffect = companyCases.reduce((sum, case_) => sum + (case_.effectpercent || 0), 0);
+                    const avgEffect = caseCount > 0 ? Math.round(totalEffect / caseCount) : 0;
+                    const effectClass = avgEffect >= 70 ? 'effect-high' : avgEffect >= 40 ? 'effect-medium' : 'effect-low';
+                    
+                    return `
+                        <div class="company-row">
+                            <div>
+                                <div class="company-name">${companyName}</div>
+                                <div style="font-size: 0.9em; color: #666;">
+                                    事例数: ${caseCount} | 登録利用者: ${companyUsers}人
+                                </div>
+                            </div>
+                            <div style="width: 200px;">
+                                ${caseCount > 0 ? `
+                                    <div class="effect-bar">
+                                        <div class="effect-fill ${effectClass}" style="width: ${avgEffect}%"></div>
+                                        <div class="effect-text">${avgEffect}%</div>
+                                    </div>
+                                ` : `
+                                    <div style="text-align: center; color: #999; font-size: 0.9em;">事例なし</div>
+                                `}
                             </div>
                         </div>
-                        <div style="width: 200px;">
-                            ${caseCount > 0 ? `
-                                <div class="effect-bar">
-                                    <div class="effect-fill ${effectClass}" style="width: ${avgEffect}%"></div>
-                                    <div class="effect-text">${avgEffect}%</div>
-                                </div>
-                            ` : `
-                                <div style="text-align: center; color: #999; font-size: 0.9em;">事例なし</div>
-                            `}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).filter(html => html !== '').join('');
+                
+                container.innerHTML = statsHtml || '<p style="color: #666;">表示できる会社データがありません</p>';
+            } catch (error) {
+                console.error('会社統計更新エラー:', error);
+                container.innerHTML = '<p style="color: red;">統計表示エラー</p>';
+            }
         }
 
         function exportData() {
