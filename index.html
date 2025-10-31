@@ -272,8 +272,8 @@
         let cases = [];
         let companies = [];
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCompanies();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadCompanies();
             populateCompanySelectors();
             cases = [];
             displayCases();
@@ -292,12 +292,15 @@
             }
         }
 
-        function initSupabase(url, key) {
+        async function initSupabase(url, key) {
             try {
                 if (supabase) return;
                 supabase = window.supabase.createClient(url, key);
                 updateSyncStatus('connected', 'Supabase接続: 正常 - 手動同期モード');
                 document.getElementById('syncBtn').style.display = 'inline-block';
+                // Supabase接続後に会社データを再読み込み
+                await loadCompanies();
+                populateCompanySelectors();
                 syncWithSupabase();
             } catch (error) {
                 console.error('Supabase初期化エラー:', error);
@@ -392,17 +395,33 @@
             }
         }
 
-        function loadCompanies() {
+        async function loadCompanies() {
+            // Supabaseが接続されている場合はSupabaseから取得
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase
+                        .from('companies')
+                        .select('name, user_count')
+                        .order('name');
+                    if (!error && data) {
+                        companies = data.map(c => ({ name: c.name, users: c.user_count }));
+                        saveCompanies(); // ローカルにも保存
+                        console.log('Companies loaded from Supabase:', companies);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Supabase会社データ取得エラー:', error);
+                }
+            }
+            
+            // Supabaseが使えない場合はローカルストレージから
             const stored = localStorage.getItem('companies');
             if (stored) {
                 const data = JSON.parse(stored);
-                // 旧形式（文字列配列）から新形式（オブジェクト配列）への変換
                 if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
-                    // 文字列配列の場合のみ変換
                     companies = data.map(name => ({ name, users: 1 }));
-                    saveCompanies(); // 変換後に保存して次回からは変換不要に
+                    saveCompanies();
                 } else {
-                    // 既にオブジェクト形式の場合
                     companies = data;
                 }
             } else {
@@ -453,7 +472,10 @@
             });
         }
 
-        function openCompanyModal() {
+        async function openCompanyModal() {
+            // 会社設定モーダルを開く前にSupabaseから最新データを取得
+            await loadCompanies();
+            populateCompanySelectors();
             displayCompaniesList();
             document.getElementById('companyModal').style.display = 'block';
         }
