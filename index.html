@@ -321,13 +321,14 @@
                 // 会社データを同期
                 const { data: companiesData, error: companiesError } = await supabase
                     .from('companies')
-                    .select('*')
+                    .select('name, user_count')
                     .order('name');
-                if (companiesError && companiesError.code !== 'PGRST116') { // テーブルが存在しないエラーを無視
+                if (companiesError && companiesError.code !== 'PGRST116') {
                     throw companiesError;
                 }
                 if (companiesData) {
-                    companies = companiesData;
+                    // Supabaseのデータ形式をローカル形式に変換
+                    companies = companiesData.map(c => ({ name: c.name, users: c.user_count }));
                     populateCompanySelectors();
                 }
                 
@@ -409,19 +410,25 @@
 
         async function saveCompanies() {
             localStorage.setItem('companies', JSON.stringify(companies));
-            
-            // Supabaseにも保存
-            if (supabase) {
-                try {
-                    // 既存データを削除して新しいデータを挿入
-                    await supabase.from('companies').delete().neq('id', 0); // 全削除
-                    if (companies.length > 0) {
-                        const { error } = await supabase.from('companies').insert(companies);
-                        if (error) throw error;
-                    }
-                } catch (error) {
-                    console.error('Supabase会社保存エラー:', error);
-                }
+        }
+        
+        async function saveCompanyToSupabase(company) {
+            if (!supabase) return;
+            try {
+                // ローカル形式をSupabase形式に変換
+                const supabaseData = {
+                    name: company.name,
+                    user_count: company.users,
+                    updated_at: new Date().toISOString()
+                };
+                
+                // upsertで挿入または更新
+                const { error } = await supabase
+                    .from('companies')
+                    .upsert(supabaseData, { onConflict: 'name' });
+                if (error) throw error;
+            } catch (error) {
+                console.error('Supabase会社保存エラー:', error);
             }
         }
 
@@ -511,6 +518,7 @@
                 // 編集モード
                 companies[editIndex] = newCompany;
                 delete this.dataset.editIndex;
+                await saveCompanyToSupabase(newCompany);
                 alert('会社情報を更新しました！');
             } else {
                 // 新規追加モード
@@ -520,6 +528,7 @@
                 });
                 if (!exists) {
                     companies.push(newCompany);
+                    await saveCompanyToSupabase(newCompany);
                     alert('会社を追加しました！');
                 } else {
                     alert('この会社名は既に登録されています');
