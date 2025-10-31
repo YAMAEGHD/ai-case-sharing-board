@@ -545,6 +545,23 @@
 
         async function removeCompany(companyName) {
             if (confirm(`「${companyName}」を削除しますか？`)) {
+                // Supabaseから削除
+                if (supabase) {
+                    try {
+                        const { error } = await supabase
+                            .from('companies')
+                            .delete()
+                            .eq('name', companyName);
+                        if (error) throw error;
+                        console.log('Company deleted from Supabase:', companyName);
+                    } catch (error) {
+                        console.error('Supabase会社削除エラー:', error);
+                        alert('会社の削除に失敗しました');
+                        return;
+                    }
+                }
+                
+                // ローカルからも削除
                 companies = companies.filter(c => {
                     const name = typeof c === 'string' ? c : c.name;
                     return name !== companyName;
@@ -554,6 +571,7 @@
                 displayCompaniesList();
                 updateStats();
                 updateCompanyStats();
+                alert('会社を削除しました');
             }
         }
 
@@ -580,7 +598,19 @@
             const newCompany = { name: companyName, users: companyUsers };
             
             if (editIndex !== undefined) {
-                // 編集モード
+                // 編集モード - 既存会社を更新
+                const oldCompany = companies[editIndex];
+                const oldName = typeof oldCompany === 'string' ? oldCompany : oldCompany.name;
+                
+                // 名前が変わった場合は古いレコードを削除
+                if (oldName !== companyName && supabase) {
+                    try {
+                        await supabase.from('companies').delete().eq('name', oldName);
+                    } catch (error) {
+                        console.error('旧会社データ削除エラー:', error);
+                    }
+                }
+                
                 companies[editIndex] = newCompany;
                 delete this.dataset.editIndex;
                 await saveCompanyToSupabase(newCompany);
@@ -971,27 +1001,32 @@
         async function deleteCase(caseId) {
             if (!confirm('この事例を削除しますか？')) return;
             
+            // Supabaseから削除
             if (supabase) {
                 try {
+                    console.log('Deleting case from Supabase:', caseId);
                     const { error } = await supabase
                         .from('cases')
                         .delete()
                         .eq('id', caseId);
                     if (error) throw error;
-                    syncWithSupabase();
+                    console.log('Case deleted from Supabase:', caseId);
+                    syncWithSupabase(); // 同期して最新データを取得
                     alert('事例を削除しました');
                     return;
                 } catch (error) {
-                    console.error('Supabase削除エラー:', error);
+                    console.error('Supabase事例削除エラー:', error);
+                    alert('事例の削除に失敗しました。ローカルからのみ削除します。');
                 }
             }
             
-            // ローカルから削除
+            // Supabaseが使えないかエラー時はローカルからのみ削除
+            console.log('Deleting case from local:', caseId);
             cases = cases.filter(c => c.id !== caseId);
             displayCases();
             updateStats();
             updateCompanyStats();
-            alert('事例を削除しました');
+            alert('事例をローカルから削除しました');
         }
 
         function manualSync() {
