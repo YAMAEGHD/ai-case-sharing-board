@@ -280,6 +280,18 @@
             updateStats();
             updateCompanyStats();
             loadSupabaseConfig();
+            
+            // 会社設定ボタンのイベントリスナーを追加
+            const companyBtn = document.querySelector('button[onclick="openCompanyModal()"]');
+            if (companyBtn) {
+                companyBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Company button clicked!');
+                    openCompanyModal();
+                });
+            } else {
+                console.log('Company button not found');
+            }
         });
 
         function loadSupabaseConfig() {
@@ -976,6 +988,8 @@
                 alert('Supabaseが設定されていません');
             }
         }
+
+
 
         window.onclick = function(event) {
             const modals = ['caseModal', 'companyModal', 'supabaseModal'];
