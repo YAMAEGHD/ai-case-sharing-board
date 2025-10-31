@@ -268,13 +268,15 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
+        console.log('=== SCRIPT START ===');
         let supabase = null;
         let cases = [];
         let companies = [];
 
-        console.log('JavaScript loaded successfully!');
+        console.log('=== JavaScript loaded successfully! ===');
         
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('=== DOM CONTENT LOADED ===');
             console.log('DOM loaded, starting initialization...');
             
             try {
