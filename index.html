@@ -395,38 +395,53 @@
             }
         }
 
-        async function loadCompanies() {
+        async function loadCompanies(forceSupabase = false) {
+            console.log('loadCompanies called, supabase:', !!supabase, 'forceSupabase:', forceSupabase);
+            
             // Supabaseが接続されている場合はSupabaseから取得
             if (supabase) {
                 try {
+                    console.log('Fetching companies from Supabase...');
                     const { data, error } = await supabase
                         .from('companies')
                         .select('name, user_count')
                         .order('name');
+                    
+                    console.log('Supabase response:', { data, error });
+                    
                     if (!error && data) {
                         companies = data.map(c => ({ name: c.name, users: c.user_count }));
-                        saveCompanies(); // ローカルにも保存
+                        localStorage.setItem('companies', JSON.stringify(companies)); // ローカルにも保存
                         console.log('Companies loaded from Supabase:', companies);
-                        return;
+                        return companies;
+                    } else {
+                        console.error('Supabase error or no data:', error);
                     }
                 } catch (error) {
                     console.error('Supabase会社データ取得エラー:', error);
                 }
+            } else {
+                console.log('Supabase not connected');
             }
             
             // Supabaseが使えない場合はローカルストレージから
-            const stored = localStorage.getItem('companies');
-            if (stored) {
-                const data = JSON.parse(stored);
-                if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
-                    companies = data.map(name => ({ name, users: 1 }));
-                    saveCompanies();
+            if (!forceSupabase) {
+                const stored = localStorage.getItem('companies');
+                console.log('Loading from localStorage:', stored);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
+                        companies = data.map(name => ({ name, users: 1 }));
+                    } else {
+                        companies = data;
+                    }
                 } else {
-                    companies = data;
+                    companies = [];
                 }
-            } else {
-                companies = [];
             }
+            
+            console.log('Final companies array:', companies);
+            return companies;
         }
 
         async function saveCompanies() {
@@ -473,8 +488,9 @@
         }
 
         async function openCompanyModal() {
-            // 会社設定モーダルを開く前にSupabaseから最新データを取得
-            await loadCompanies();
+            console.log('Opening company modal, forcing Supabase refresh...');
+            // 会社設定モーダルを開く前にSupabaseから強制的に最新データを取得
+            await loadCompanies(true);
             populateCompanySelectors();
             displayCompaniesList();
             document.getElementById('companyModal').style.display = 'block';
