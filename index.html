@@ -654,9 +654,12 @@
 
         function updateStats() {
             const totalCases = cases.length;
-            const totalCompanies = new Set(cases.map(c => c.company)).size;
+            const totalCompanies = companies.length;
             const avgEffect = totalCases > 0 ? Math.round(cases.reduce((sum, c) => sum + c.effectpercent, 0) / totalCases) : 0;
-            const totalUsers = cases.reduce((sum, c) => sum + (c.users || 1), 0);
+            const totalUsers = companies.reduce((sum, c) => {
+                const users = typeof c === 'string' ? 1 : c.users;
+                return sum + users;
+            }, 0);
             document.getElementById('totalCases').textContent = totalCases;
             document.getElementById('totalCompanies').textContent = totalCompanies;
             document.getElementById('avgEffect').textContent = avgEffect + '%';
