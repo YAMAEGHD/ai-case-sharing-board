@@ -272,25 +272,36 @@
         let cases = [];
         let companies = [];
 
+        console.log('JavaScript loaded successfully!');
+        
         document.addEventListener('DOMContentLoaded', async function() {
-            await loadCompanies();
-            populateCompanySelectors();
-            cases = [];
-            displayCases();
-            updateStats();
-            updateCompanyStats();
-            loadSupabaseConfig();
+            console.log('DOM loaded, starting initialization...');
             
-            // 会社設定ボタンのイベントリスナーを追加
-            const companyBtn = document.querySelector('button[onclick="openCompanyModal()"]');
-            if (companyBtn) {
-                companyBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Company button clicked!');
-                    openCompanyModal();
-                });
-            } else {
-                console.log('Company button not found');
+            try {
+                await loadCompanies();
+                populateCompanySelectors();
+                cases = [];
+                displayCases();
+                updateStats();
+                updateCompanyStats();
+                loadSupabaseConfig();
+                
+                console.log('Initialization completed');
+                
+                // 会社設定ボタンのイベントリスナーを追加
+                const companyBtn = document.querySelector('button[onclick="openCompanyModal()"]');
+                if (companyBtn) {
+                    console.log('Company button found, adding event listener');
+                    companyBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log('Company button clicked!');
+                        openCompanyModal();
+                    });
+                } else {
+                    console.log('Company button not found');
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
             }
         });
 
