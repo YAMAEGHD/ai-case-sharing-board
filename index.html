@@ -309,16 +309,32 @@
             if (!supabase) return;
             try {
                 updateSyncStatus('connected', 'Supabase接続: 同期中...');
-                const { data, error } = await supabase
+                
+                // 事例データを同期
+                const { data: casesData, error: casesError } = await supabase
                     .from('cases')
                     .select('*')
                     .order('created_at', { ascending: false });
-                if (error) throw error;
-                cases = data || [];
+                if (casesError) throw casesError;
+                cases = casesData || [];
+                
+                // 会社データを同期
+                const { data: companiesData, error: companiesError } = await supabase
+                    .from('companies')
+                    .select('*')
+                    .order('name');
+                if (companiesError && companiesError.code !== 'PGRST116') { // テーブルが存在しないエラーを無視
+                    throw companiesError;
+                }
+                if (companiesData) {
+                    companies = companiesData;
+                    populateCompanySelectors();
+                }
+                
                 displayCases();
                 updateStats();
                 updateCompanyStats();
-                updateSyncStatus('connected', `Supabase接続: 正常 - ${cases.length}件の事例を同期完了`);
+                updateSyncStatus('connected', `Supabase接続: 正常 - ${cases.length}件の事例、${companies.length}社を同期完了`);
             } catch (error) {
                 console.error('同期エラー:', error);
                 updateSyncStatus('disconnected', `Supabase接続: エラー - ${error.message}`);
@@ -391,8 +407,22 @@
             }
         }
 
-        function saveCompanies() {
+        async function saveCompanies() {
             localStorage.setItem('companies', JSON.stringify(companies));
+            
+            // Supabaseにも保存
+            if (supabase) {
+                try {
+                    // 既存データを削除して新しいデータを挿入
+                    await supabase.from('companies').delete().neq('id', 0); // 全削除
+                    if (companies.length > 0) {
+                        const { error } = await supabase.from('companies').insert(companies);
+                        if (error) throw error;
+                    }
+                } catch (error) {
+                    console.error('Supabase会社保存エラー:', error);
+                }
+            }
         }
 
         function populateCompanySelectors() {
@@ -447,7 +477,7 @@
                     const name = typeof c === 'string' ? c : c.name;
                     return name !== companyName;
                 });
-                saveCompanies();
+                await saveCompanies();
                 populateCompanySelectors();
                 displayCompaniesList();
                 updateStats();
@@ -467,7 +497,7 @@
             document.getElementById('companyForm').dataset.editIndex = index;
         }
 
-        document.getElementById('companyForm').addEventListener('submit', function(e) {
+        document.getElementById('companyForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const companyName = document.getElementById('companyName').value.trim();
             const companyUsers = parseInt(document.getElementById('companyUsers').value) || 1;
@@ -497,7 +527,7 @@
                 }
             }
             
-            saveCompanies();
+            await saveCompanies();
             populateCompanySelectors();
             displayCompaniesList();
             updateStats();
@@ -707,6 +737,9 @@
         function updateCompanyStats() {
             const container = document.getElementById('companyStats');
             
+            console.log('updateCompanyStats called, cases:', cases.length);
+            console.log('cases data:', cases);
+            
             if (cases.length === 0) {
                 container.innerHTML = '<p style="color: #666;">事例データがありません</p>';
                 return;
@@ -715,8 +748,10 @@
             try {
                 // 事例データから会社名を抽出
                 const companiesFromCases = [...new Set(cases.map(case_ => case_.company))];
+                console.log('companiesFromCases:', companiesFromCases);
                 
                 const statsHtml = companiesFromCases.map(companyName => {
+                    console.log('Processing company:', companyName);
                     // 登録済み会社から利用者数を取得（なければデフォルト）
                     const registeredCompany = companies.find(c => {
                         const name = typeof c === 'string' ? c : c.name;
