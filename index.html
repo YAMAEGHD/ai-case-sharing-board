@@ -664,36 +664,41 @@
         }
 
         function updateCompanyStats() {
-            const stats = {};
-            cases.forEach(case_ => {
-                if (!stats[case_.company]) {
-                    stats[case_.company] = { count: 0, totalEffect: 0, users: 0 };
-                }
-                stats[case_.company].count++;
-                stats[case_.company].totalEffect += case_.effectpercent;
-                stats[case_.company].users += case_.users || 1;
-            });
             const container = document.getElementById('companyStats');
-            if (Object.keys(stats).length === 0) {
-                container.innerHTML = '<p style="color: #666;">データがありません</p>';
+            if (companies.length === 0) {
+                container.innerHTML = '<p style="color: #666;">会社が登録されていません</p>';
                 return;
             }
-            container.innerHTML = Object.entries(stats).map(([company, data]) => {
-                const avgEffect = Math.round(data.totalEffect / data.count);
+            
+            // 登録済み会社全てを表示
+            container.innerHTML = companies.map(company => {
+                const companyName = typeof company === 'string' ? company : company.name;
+                const companyUsers = typeof company === 'string' ? 1 : company.users;
+                
+                // この会社の事例データを集計
+                const companyCases = cases.filter(case_ => case_.company === companyName);
+                const caseCount = companyCases.length;
+                const totalEffect = companyCases.reduce((sum, case_) => sum + case_.effectpercent, 0);
+                const avgEffect = caseCount > 0 ? Math.round(totalEffect / caseCount) : 0;
                 const effectClass = avgEffect >= 70 ? 'effect-high' : avgEffect >= 40 ? 'effect-medium' : 'effect-low';
+                
                 return `
                     <div class="company-row">
                         <div>
-                            <div class="company-name">${company}</div>
+                            <div class="company-name">${companyName}</div>
                             <div style="font-size: 0.9em; color: #666;">
-                                事例数: ${data.count} | 利用者: ${data.users}人
+                                事例数: ${caseCount} | 登録利用者: ${companyUsers}人
                             </div>
                         </div>
                         <div style="width: 200px;">
-                            <div class="effect-bar">
-                                <div class="effect-fill ${effectClass}" style="width: ${avgEffect}%"></div>
-                                <div class="effect-text">${avgEffect}%</div>
-                            </div>
+                            ${caseCount > 0 ? `
+                                <div class="effect-bar">
+                                    <div class="effect-fill ${effectClass}" style="width: ${avgEffect}%"></div>
+                                    <div class="effect-text">${avgEffect}%</div>
+                                </div>
+                            ` : `
+                                <div style="text-align: center; color: #999; font-size: 0.9em;">事例なし</div>
+                            `}
                         </div>
                     </div>
                 `;
