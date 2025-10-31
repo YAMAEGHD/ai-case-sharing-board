@@ -3,52 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>グループ会社 生成AI活用事例共有掲示板</title>
+    <title>生成AI活用事例掲示板</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
         .header h1 { margin: 0; font-size: 2.2em; }
-        .header p { margin: 10px 0 0 0; opacity: 0.9; }
         .controls { padding: 20px; border-bottom: 1px solid #eee; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
         .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
         .btn-primary { background: #667eea; color: white; }
-        .btn-primary:hover { background: #5a6fd8; }
         .btn-success { background: #28a745; color: white; }
-        .btn-success:hover { background: #218838; }
         select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
         .search-box { flex: 1; min-width: 200px; }
         .content { padding: 20px; }
-        .case-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 15px; transition: all 0.3s; }
-        .case-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
-        .case-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .case-title { font-size: 1.3em; font-weight: bold; color: #333; margin: 0; }
-        .case-meta { font-size: 0.9em; color: #666; }
-        .case-tags { margin: 10px 0; }
-        .tag { background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; }
-        .case-content { margin: 15px 0; line-height: 1.6; }
-        .case-effect { background: #e8f5e8; border-left: 4px solid #28a745; padding: 10px; margin: 10px 0; border-radius: 0 4px 4px 0; }
+        
+        /* 一覧表示スタイル */
+        .case-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .case-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
+        .case-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .case-actions { position: absolute; top: 10px; right: 10px; display: none; }
+        .case-card:hover .case-actions { display: block; }
+        .case-actions button { padding: 4px 8px; margin-left: 5px; font-size: 12px; border: none; border-radius: 3px; cursor: pointer; }
+        .edit-btn { background: #007bff; color: white; }
+        .delete-btn { background: #dc3545; color: white; }
+        .case-title { font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .case-meta { font-size: 0.9em; color: #666; margin-bottom: 10px; }
+        .company-name { font-weight: bold; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
+        .case-preview { color: #555; line-height: 1.4; margin-bottom: 10px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+        .case-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+        .tag { background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; }
+        .case-effect { background: #e8f5e8; color: #2e7d32; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
+        
+        /* 詳細表示モーダル */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-        .modal-content { background: white; margin: 5% auto; padding: 0; width: 90%; max-width: 600px; border-radius: 10px; max-height: 80vh; overflow-y: auto; }
-        .modal-header { background: #667eea; color: white; padding: 20px; border-radius: 10px 10px 0 0; }
-        .modal-body { padding: 20px; }
-        .close { color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .modal-content { background: white; margin: 2% auto; padding: 0; width: 90%; max-width: 800px; border-radius: 10px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { background: #667eea; color: white; padding: 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 30px; }
+        .close { color: white; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .detail-section { margin-bottom: 20px; }
+        .detail-label { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .detail-content { background: #f8f9fa; padding: 15px; border-radius: 5px; line-height: 1.6; }
+        .detail-effect { background: #e8f5e8; border-left: 4px solid #28a745; padding: 15px; border-radius: 0 5px 5px 0; }
+        .detail-tips { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 0 5px 5px 0; }
+        
+        /* フォームスタイル */
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         .form-group textarea { height: 100px; resize: vertical; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
-        .stat-number { font-size: 2em; font-weight: bold; }
-        .stat-label { font-size: 0.9em; opacity: 0.9; }
-        .company-stats { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
-        .company-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-        .company-row:last-child { border-bottom: none; }
-        .company-name { font-weight: bold; }
-
         .category-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
         .category-checkbox { display: flex; align-items: center; gap: 5px; }
-        .category-checkbox input[type="checkbox"] { margin: 0; }
+        
+        /* ページネーション */
+        .pagination { display: flex; justify-content: center; align-items: center; margin: 30px 0; gap: 10px; }
+        .pagination button { padding: 8px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; }
+        .pagination button:hover { background: #f5f5f5; }
+        .pagination button.active { background: #667eea; color: white; border-color: #667eea; }
+        .pagination button:disabled { background: #f5f5f5; color: #999; cursor: not-allowed; }
+        .pagination .page-info { margin: 0 15px; color: #666; }
+        
+        /* 統計表示 */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: #f8f9fa; border: 1px solid #e9ecef; color: #495057; padding: 12px; border-radius: 6px; text-align: center; }
+        .stat-number { font-size: 1.3em; font-weight: bold; }
+        .stat-label { font-size: 0.8em; color: #6c757d; }
+        .company-stats { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+        .company-stats h3 { font-size: 1em; margin: 0 0 10px 0; color: #495057; }
+        .company-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9ecef; font-size: 0.9em; }
+        .company-row:last-child { border-bottom: none; }
         .sync-status { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 0.9em; }
         .sync-connected { background: #d4edda; border-color: #c3e6cb; color: #155724; }
         .sync-disconnected { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
@@ -58,7 +80,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 生成AI活用事例共有掲示板</h1>
+            <h1>🤖 生成AI活用事例掲示板</h1>
             <p>ヤマエグループ間での生成AI活用事例・ノウハウ共有</p>
         </div>
 
@@ -110,11 +132,25 @@
             </div>
 
             <div class="company-stats">
-                <h3 style="margin-top: 0;">📊 会社別統計</h3>
+                <h3>📊 会社別統計</h3>
                 <div id="companyStats"></div>
             </div>
 
-            <div id="casesList"></div>
+            <div id="casesList" class="case-list"></div>
+            <div id="pagination" class="pagination"></div>
+        </div>
+    </div>
+
+    <!-- 事例詳細モーダル -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="detailTitle">事例詳細</h2>
+                <span class="close" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="detailBody">
+                <!-- 詳細内容がここに表示される -->
+            </div>
         </div>
     </div>
 
@@ -122,8 +158,8 @@
     <div id="caseModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="close" onclick="closeModal()">&times;</span>
                 <h2>📝 新規事例投稿</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="caseForm">
@@ -219,8 +255,8 @@
     <div id="companyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="close" onclick="closeCompanyModal()">&times;</span>
                 <h2>👥 会社設定</h2>
+                <span class="close" onclick="closeCompanyModal()">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="companyForm">
@@ -245,8 +281,8 @@
     <div id="supabaseModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="close" onclick="closeSupabaseModal()">&times;</span>
                 <h2>🔧 Supabase設定</h2>
+                <span class="close" onclick="closeSupabaseModal()">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="supabaseForm">
@@ -268,43 +304,43 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        console.log('=== SCRIPT START ===');
         let supabase = null;
         let cases = [];
         let companies = [];
-
-        console.log('=== JavaScript loaded successfully! ===');
+        let currentPage = 1;
+        const itemsPerPage = 9;
+        let filteredCases = [];
         
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('=== DOM CONTENT LOADED ===');
-            console.log('DOM loaded, starting initialization...');
+        // 会社ごとの色を生成する関数
+        function getCompanyColor(companyName) {
+            const colors = [
+                { bg: '#e3f2fd', text: '#1976d2' }, // 青
+                { bg: '#e8f5e8', text: '#2e7d32' }, // 緑
+                { bg: '#fff3e0', text: '#f57c00' }, // オレンジ
+                { bg: '#fce4ec', text: '#c2185b' }, // ピンク
+                { bg: '#f3e5f5', text: '#7b1fa2' }, // 紫
+                { bg: '#e0f2f1', text: '#00695c' }, // ティール
+                { bg: '#fff8e1', text: '#f9a825' }, // 黄色
+                { bg: '#efebe9', text: '#5d4037' }  // 茶色
+            ];
             
-            try {
-                await loadCompanies();
-                populateCompanySelectors();
-                cases = [];
-                displayCases();
-                updateStats();
-                updateCompanyStats();
-                loadSupabaseConfig();
-                
-                console.log('Initialization completed');
-                
-                // 会社設定ボタンのイベントリスナーを追加
-                const companyBtn = document.querySelector('button[onclick="openCompanyModal()"]');
-                if (companyBtn) {
-                    console.log('Company button found, adding event listener');
-                    companyBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        console.log('Company button clicked!');
-                        openCompanyModal();
-                    });
-                } else {
-                    console.log('Company button not found');
-                }
-            } catch (error) {
-                console.error('Initialization error:', error);
+            // 会社名からハッシュ値を生成して色を決定
+            let hash = 0;
+            for (let i = 0; i < companyName.length; i++) {
+                hash = companyName.charCodeAt(i) + ((hash << 5) - hash);
             }
+            const index = Math.abs(hash) % colors.length;
+            return colors[index];
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadCompanies();
+            populateCompanySelectors();
+            cases = [];
+            displayCases();
+            updateStats();
+            updateCompanyStats();
+            loadSupabaseConfig();
         });
 
         function loadSupabaseConfig() {
@@ -323,7 +359,6 @@
                 supabase = window.supabase.createClient(url, key);
                 updateSyncStatus('connected', 'Supabase接続: 正常 - 手動同期モード');
                 document.getElementById('syncBtn').style.display = 'inline-block';
-                // Supabase接続後に会社データを再読み込み
                 await loadCompanies();
                 populateCompanySelectors();
                 syncWithSupabase();
@@ -338,7 +373,6 @@
             try {
                 updateSyncStatus('connected', 'Supabase接続: 同期中...');
                 
-                // 事例データを同期
                 const { data: casesData, error: casesError } = await supabase
                     .from('cases')
                     .select('*')
@@ -346,7 +380,6 @@
                 if (casesError) throw casesError;
                 cases = casesData || [];
                 
-                // 会社データを同期
                 const { data: companiesData, error: companiesError } = await supabase
                     .from('companies')
                     .select('name, user_count')
@@ -355,11 +388,9 @@
                     throw companiesError;
                 }
                 if (companiesData) {
-                    // Supabaseのデータ形式をローカル形式に変換
                     companies = companiesData.map(c => ({ name: c.name, users: c.user_count }));
-                    saveCompanies(); // ローカルストレージも更新
+                    localStorage.setItem('companies', JSON.stringify(companies));
                     populateCompanySelectors();
-                    console.log('Companies synced from Supabase:', companies);
                 }
                 
                 displayCases();
@@ -372,87 +403,26 @@
             }
         }
 
-        function updateSyncStatus(status, message) {
-            const statusElement = document.getElementById('syncStatus');
-            statusElement.className = `sync-status sync-${status}`;
-            statusElement.textContent = message;
-        }
-
-        function openSupabaseModal() {
-            const config = localStorage.getItem('supabaseConfig');
-            if (config) {
-                const { url, key } = JSON.parse(config);
-                document.getElementById('supabaseUrl').value = url || '';
-                document.getElementById('supabaseKey').value = key || '';
-            }
-            document.getElementById('supabaseModal').style.display = 'block';
-        }
-
-        function closeSupabaseModal() {
-            document.getElementById('supabaseModal').style.display = 'none';
-        }
-
-        document.getElementById('supabaseForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const url = document.getElementById('supabaseUrl').value;
-            const key = document.getElementById('supabaseKey').value;
-            localStorage.setItem('supabaseConfig', JSON.stringify({ url, key }));
-            initSupabase(url, key);
-            closeSupabaseModal();
-            alert('Supabase設定を保存しました！');
-        });
-
-        async function testConnection() {
-            const url = document.getElementById('supabaseUrl').value;
-            const key = document.getElementById('supabaseKey').value;
-            const resultDiv = document.getElementById('connectionResult');
-            if (!url || !key) {
-                resultDiv.innerHTML = '<div style="color: red;">URLとAPI Keyを入力してください</div>';
-                return;
-            }
-            try {
-                const testClient = window.supabase.createClient(url, key);
-                const { data, error } = await testClient.from('cases').select('*');
-                if (error) throw error;
-                resultDiv.innerHTML = `<div style="color: green;">✅ 接続成功！ (${data.length}件の事例を発見)</div>`;
-            } catch (error) {
-                resultDiv.innerHTML = `<div style="color: red;">❌ 接続失敗: ${error.message}</div>`;
-            }
-        }
-
         async function loadCompanies(forceSupabase = false) {
-            console.log('loadCompanies called, supabase:', !!supabase, 'forceSupabase:', forceSupabase);
-            
-            // Supabaseが接続されている場合はSupabaseから取得
             if (supabase) {
                 try {
-                    console.log('Fetching companies from Supabase...');
                     const { data, error } = await supabase
                         .from('companies')
                         .select('name, user_count')
                         .order('name');
                     
-                    console.log('Supabase response:', { data, error });
-                    
                     if (!error && data) {
                         companies = data.map(c => ({ name: c.name, users: c.user_count }));
-                        localStorage.setItem('companies', JSON.stringify(companies)); // ローカルにも保存
-                        console.log('Companies loaded from Supabase:', companies);
+                        localStorage.setItem('companies', JSON.stringify(companies));
                         return companies;
-                    } else {
-                        console.error('Supabase error or no data:', error);
                     }
                 } catch (error) {
                     console.error('Supabase会社データ取得エラー:', error);
                 }
-            } else {
-                console.log('Supabase not connected');
             }
             
-            // Supabaseが使えない場合はローカルストレージから
             if (!forceSupabase) {
                 const stored = localStorage.getItem('companies');
-                console.log('Loading from localStorage:', stored);
                 if (stored) {
                     const data = JSON.parse(stored);
                     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
@@ -465,7 +435,6 @@
                 }
             }
             
-            console.log('Final companies array:', companies);
             return companies;
         }
 
@@ -476,14 +445,12 @@
         async function saveCompanyToSupabase(company) {
             if (!supabase) return;
             try {
-                // ローカル形式をSupabase形式に変換
                 const supabaseData = {
                     name: company.name,
                     user_count: company.users,
                     updated_at: new Date().toISOString()
                 };
                 
-                // upsertで挿入または更新
                 const { error } = await supabase
                     .from('companies')
                     .upsert(supabaseData, { onConflict: 'name' });
@@ -491,6 +458,149 @@
             } catch (error) {
                 console.error('Supabase会社保存エラー:', error);
             }
+        }
+
+        function displayCases(casesToShow = cases) {
+            filteredCases = casesToShow;
+            const container = document.getElementById('casesList');
+            
+            if (filteredCases.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">まだ事例が投稿されていません。</p>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            // ページネーション用のデータを取得
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentCases = filteredCases.slice(startIndex, endIndex);
+
+            container.innerHTML = currentCases.map(case_ => `
+                <div class="case-card" onclick="showCaseDetail(${case_.id})">
+                    <div class="case-actions">
+                        <button class="edit-btn" onclick="event.stopPropagation(); editCase(${case_.id})">編集</button>
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteCase(${case_.id})">削除</button>
+                    </div>
+                    <div class="case-title">${case_.title}</div>
+                    <div class="case-tags">
+                        ${case_.categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
+                    </div>
+                    <div class="case-meta">
+                        <span class="company-name" style="background: ${getCompanyColor(case_.company).bg}; color: ${getCompanyColor(case_.company).text};">${case_.company}</span>${case_.department ? ` / ${case_.department}` : ''} | ${case_.author} | ${case_.date}
+                    </div>
+                    <div class="case-preview">${case_.content}</div>
+                    <div class="case-effect">${case_.effectpercent}%改善</div>
+                </div>
+            `).join('');
+            
+            updatePagination();
+        }
+        
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+            const container = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let paginationHTML = `
+                <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>前へ</button>
+            `;
+            
+            // ページ番号ボタン
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    paginationHTML += `<button class="active">${i}</button>`;
+                } else {
+                    paginationHTML += `<button onclick="goToPage(${i})">${i}</button>`;
+                }
+            }
+            
+            paginationHTML += `
+                <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>次へ</button>
+                <div class="page-info">${currentPage} / ${totalPages} ページ (全${filteredCases.length}件)</div>
+            `;
+            
+            container.innerHTML = paginationHTML;
+        }
+        
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            displayCases(filteredCases);
+        }
+
+        function showCaseDetail(caseId) {
+            const case_ = cases.find(c => c.id === caseId);
+            if (!case_) return;
+
+            document.getElementById('detailTitle').textContent = case_.title;
+            document.getElementById('detailBody').innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-label">📋 基本情報</div>
+                    <div class="detail-content">
+                        <strong>会社:</strong> ${case_.company}<br>
+                        <strong>部署:</strong> ${case_.department || '未設定'}<br>
+                        <strong>投稿者:</strong> ${case_.author}<br>
+                        <strong>投稿日:</strong> ${case_.date}<br>
+                        <strong>利用者数:</strong> ${case_.users || 1}人
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">🏷️ カテゴリ</div>
+                    <div class="case-tags">
+                        ${case_.categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">📝 事例内容</div>
+                    <div class="detail-content">${case_.content.replace(/\n/g, '<br>')}</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">📈 効果・成果 (${case_.effectpercent}%改善)</div>
+                    <div class="detail-effect">${case_.effect.replace(/\n/g, '<br>')}</div>
+                </div>
+                
+                ${case_.tips ? `
+                    <div class="detail-section">
+                        <div class="detail-label">💡 活用のコツ・注意点</div>
+                        <div class="detail-tips">${case_.tips.replace(/\n/g, '<br>')}</div>
+                    </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('detailModal').style.display = 'block';
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        function filterCases() {
+            const companyFilter = document.getElementById('companyFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            
+            const filtered = cases.filter(case_ => {
+                const matchCompany = !companyFilter || case_.company === companyFilter;
+                const matchCategory = !categoryFilter || case_.categories.includes(categoryFilter);
+                const matchSearch = !searchTerm || 
+                    case_.title.toLowerCase().includes(searchTerm) ||
+                    case_.content.toLowerCase().includes(searchTerm) ||
+                    case_.effect.toLowerCase().includes(searchTerm) ||
+                    case_.author.toLowerCase().includes(searchTerm);
+                return matchCompany && matchCategory && matchSearch;
+            });
+
+            currentPage = 1;
+            displayCases(filtered);
         }
 
         function populateCompanySelectors() {
@@ -512,9 +622,164 @@
             });
         }
 
+        // 基本的なモーダル操作
+        function openModal() {
+            document.getElementById('caseModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('caseModal').style.display = 'none';
+            document.getElementById('caseForm').reset();
+            delete document.getElementById('caseForm').dataset.editId;
+            document.querySelector('#caseModal h2').textContent = '📝 新規事例投稿';
+        }
+
+        function editCase(caseId) {
+            const caseData = cases.find(c => c.id === caseId);
+            if (!caseData) {
+                alert('事例が見つかりません');
+                return;
+            }
+            
+            document.getElementById('caseTitle').value = caseData.title;
+            document.getElementById('caseCompany').value = caseData.company;
+            document.getElementById('caseDepartment').value = caseData.department || '';
+            document.getElementById('caseAuthor').value = caseData.author;
+            document.getElementById('caseContent').value = caseData.content;
+            document.getElementById('caseEffect').value = caseData.effect;
+            document.getElementById('caseEffectPercent').value = caseData.effectpercent;
+            document.getElementById('caseUsers').value = caseData.users || 1;
+            document.getElementById('caseTips').value = caseData.tips || '';
+            
+            document.querySelectorAll('.category-checkbox input').forEach(cb => cb.checked = false);
+            caseData.categories.forEach(cat => {
+                const checkbox = document.querySelector(`input[value="${cat}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            
+            document.getElementById('caseForm').dataset.editId = caseId;
+            document.querySelector('#caseModal h2').textContent = '📝 事例編集';
+            
+            openModal();
+        }
+        
+        async function deleteCase(caseId) {
+            if (!confirm('この事例を削除しますか？')) return;
+            
+            if (supabase) {
+                try {
+                    const { error } = await supabase
+                        .from('cases')
+                        .delete()
+                        .eq('id', caseId);
+                    if (error) throw error;
+                    syncWithSupabase();
+                    alert('事例を削除しました');
+                    return;
+                } catch (error) {
+                    console.error('Supabase事例削除エラー:', error);
+                    alert('事例の削除に失敗しました。ローカルからのみ削除します。');
+                }
+            }
+            
+            cases = cases.filter(c => c.id !== caseId);
+            displayCases();
+            updateStats();
+            updateCompanyStats();
+            alert('事例をローカルから削除しました');
+        }
+
+        function manualSync() {
+            if (supabase) {
+                syncWithSupabase();
+            } else {
+                alert('Supabaseが設定されていません');
+            }
+        }
+
+        function updateSyncStatus(status, message) {
+            const statusElement = document.getElementById('syncStatus');
+            statusElement.className = `sync-status sync-${status}`;
+            statusElement.textContent = message;
+        }
+
+        function updateStats() {
+            const totalCases = cases.length;
+            const totalCompanies = companies.length;
+            const avgEffect = totalCases > 0 ? Math.round(cases.reduce((sum, c) => sum + c.effectpercent, 0) / totalCases) : 0;
+            const totalUsers = companies.reduce((sum, c) => {
+                const users = typeof c === 'string' ? 1 : c.users;
+                return sum + users;
+            }, 0);
+            document.getElementById('totalCases').textContent = totalCases;
+            document.getElementById('totalCompanies').textContent = totalCompanies;
+            document.getElementById('avgEffect').textContent = avgEffect + '%';
+            document.getElementById('totalUsers').textContent = totalUsers;
+        }
+
+        function updateCompanyStats() {
+            const container = document.getElementById('companyStats');
+            
+            if (cases.length === 0) {
+                container.innerHTML = '<p style="color: #666;">事例データがありません</p>';
+                return;
+            }
+            
+            try {
+                const companiesFromCases = [...new Set(cases.map(case_ => case_.company))];
+                
+                const statsHtml = companiesFromCases.map(companyName => {
+                    const registeredCompany = companies.find(c => {
+                        const name = typeof c === 'string' ? c : c.name;
+                        return name === companyName;
+                    });
+                    const companyUsers = registeredCompany 
+                        ? (typeof registeredCompany === 'string' ? 1 : registeredCompany.users || 1)
+                        : 1;
+                    
+                    const companyCases = cases.filter(case_ => case_.company === companyName);
+                    const caseCount = companyCases.length;
+                    
+                    const categoryStats = {};
+                    companyCases.forEach(case_ => {
+                        if (case_.categories && Array.isArray(case_.categories)) {
+                            case_.categories.forEach(cat => {
+                                categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+                            });
+                        }
+                    });
+                    
+                    const categoryDisplay = Object.keys(categoryStats).length > 0 
+                        ? Object.entries(categoryStats)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 3)
+                            .map(([cat, count]) => `${cat}:${count}`)
+                            .join(' | ')
+                        : 'カテゴリなし';
+                    
+                    return `
+                        <div class="company-row">
+                            <div>
+                                <div class="company-name">${companyName}</div>
+                                <div style="font-size: 0.9em; color: #666;">
+                                    総事例数: ${caseCount} | 登録利用者: ${companyUsers}人
+                                </div>
+                            </div>
+                            <div style="width: 300px; font-size: 0.9em;">
+                                ${categoryDisplay}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = statsHtml || '<p style="color: #666;">表示できる会社データがありません</p>';
+            } catch (error) {
+                console.error('会社統計更新エラー:', error);
+                container.innerHTML = '<p style="color: red;">統計表示エラー</p>';
+            }
+        }
+
         async function openCompanyModal() {
-            console.log('Opening company modal, forcing Supabase refresh...');
-            // 会社設定モーダルを開く前にSupabaseから強制的に最新データを取得
             await loadCompanies(true);
             populateCompanySelectors();
             displayCompaniesList();
@@ -545,7 +810,6 @@
 
         async function removeCompany(companyName) {
             if (confirm(`「${companyName}」を削除しますか？`)) {
-                // Supabaseから削除
                 if (supabase) {
                     try {
                         const { error } = await supabase
@@ -553,7 +817,6 @@
                             .delete()
                             .eq('name', companyName);
                         if (error) throw error;
-                        console.log('Company deleted from Supabase:', companyName);
                     } catch (error) {
                         console.error('Supabase会社削除エラー:', error);
                         alert('会社の削除に失敗しました');
@@ -561,7 +824,6 @@
                     }
                 }
                 
-                // ローカルからも削除
                 companies = companies.filter(c => {
                     const name = typeof c === 'string' ? c : c.name;
                     return name !== companyName;
@@ -583,99 +845,83 @@
             document.getElementById('companyName').value = companyName;
             document.getElementById('companyUsers').value = companyUsers;
             
-            // 編集モードを記録
             document.getElementById('companyForm').dataset.editIndex = index;
         }
 
-        document.getElementById('companyForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const companyName = document.getElementById('companyName').value.trim();
-            const companyUsers = parseInt(document.getElementById('companyUsers').value) || 1;
-            const editIndex = this.dataset.editIndex;
-            
-            if (!companyName) return;
-            
-            const newCompany = { name: companyName, users: companyUsers };
-            
-            if (editIndex !== undefined) {
-                // 編集モード - 既存会社を更新
-                const oldCompany = companies[editIndex];
-                const oldName = typeof oldCompany === 'string' ? oldCompany : oldCompany.name;
-                
-                // 名前が変わった場合は古いレコードを削除
-                if (oldName !== companyName && supabase) {
-                    try {
-                        await supabase.from('companies').delete().eq('name', oldName);
-                    } catch (error) {
-                        console.error('旧会社データ削除エラー:', error);
-                    }
-                }
-                
-                companies[editIndex] = newCompany;
-                delete this.dataset.editIndex;
-                await saveCompanyToSupabase(newCompany);
-                alert('会社情報を更新しました！');
-            } else {
-                // 新規追加モード
-                const exists = companies.some(c => {
-                    const name = typeof c === 'string' ? c : c.name;
-                    return name === companyName;
-                });
-                if (!exists) {
-                    companies.push(newCompany);
-                    await saveCompanyToSupabase(newCompany);
-                    alert('会社を追加しました！');
-                } else {
-                    alert('この会社名は既に登録されています');
-                    return;
-                }
+        function openSupabaseModal() {
+            const config = localStorage.getItem('supabaseConfig');
+            if (config) {
+                const { url, key } = JSON.parse(config);
+                document.getElementById('supabaseUrl').value = url || '';
+                document.getElementById('supabaseKey').value = key || '';
+            }
+            document.getElementById('supabaseModal').style.display = 'block';
+        }
+
+        function closeSupabaseModal() {
+            document.getElementById('supabaseModal').style.display = 'none';
+        }
+
+        async function testConnection() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            const resultDiv = document.getElementById('connectionResult');
+            if (!url || !key) {
+                resultDiv.innerHTML = '<div style="color: red;">URLとAPI Keyを入力してください</div>';
+                return;
+            }
+            try {
+                const testClient = window.supabase.createClient(url, key);
+                const { data, error } = await testClient.from('cases').select('*');
+                if (error) throw error;
+                resultDiv.innerHTML = `<div style="color: green;">✅ 接続成功！ (${data.length}件の事例を発見)</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red;">❌ 接続失敗: ${error.message}</div>`;
+            }
+        }
+
+        function exportData() {
+            if (cases.length === 0) {
+                alert('エクスポートするデータがありません');
+                return;
             }
             
-            await saveCompanies();
-            populateCompanySelectors();
-            displayCompaniesList();
-            updateStats();
-            updateCompanyStats();
-            document.getElementById('companyName').value = '';
-            document.getElementById('companyUsers').value = '1';
-        });
-
-        async function saveCase(caseData) {
-            if (supabase) {
-                try {
-                    const { data, error } = await supabase
-                        .from('cases')
-                        .insert([caseData]);
-                    if (error) throw error;
-                    syncWithSupabase();
-                    return;
-                } catch (error) {
-                    console.error('Supabase保存エラー:', error);
-                }
-            }
-            cases.unshift(caseData);
-            displayCases();
-            updateStats();
-            updateCompanyStats();
+            const headers = ['ID', 'タイトル', '会社名', '部署名', '投稿者', 'カテゴリ', '事例内容', '効果・成果', '効果率(%)', '利用者数', '活用のコツ', '投稿日'];
+            const csvData = cases.map(case_ => [
+                case_.id,
+                `"${case_.title.replace(/"/g, '""')}"`,
+                `"${case_.company.replace(/"/g, '""')}"`,
+                `"${(case_.department || '').replace(/"/g, '""')}"`,
+                `"${case_.author.replace(/"/g, '""')}"`,
+                `"${case_.categories.join(', ').replace(/"/g, '""')}"`,
+                `"${case_.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                `"${case_.effect.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                case_.effectpercent,
+                case_.users || 1,
+                `"${(case_.tips || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                case_.date
+            ]);
+            
+            const csvContent = [headers.join(','), ...csvData.map(row => row.join(','))].join('\n');
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-cases-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        function openModal() {
-            document.getElementById('caseModal').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('caseModal').style.display = 'none';
-            document.getElementById('caseForm').reset();
-            delete document.getElementById('caseForm').dataset.editId;
-            document.querySelector('#caseModal h2').textContent = '📝 新規事例投稿';
-        }
-
+        // 事例投稿処理
         document.getElementById('caseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const categories = Array.from(document.querySelectorAll('.category-checkbox input:checked'))
                 .map(cb => cb.value);
             if (categories.length === 0) {
-                alert('カテゴリを1つ以上選択してください');
+                alert('カテゴリを１つ以上選択してください');
                 return;
             }
             const editId = this.dataset.editId;
@@ -721,324 +967,97 @@
             closeModal();
         });
 
-        function displayCases() {
-            const container = document.getElementById('casesList');
-            if (cases.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">まだ事例が投稿されていません。最初の事例を投稿してみましょう！</p>';
-                return;
-            }
-            container.innerHTML = cases.map(case_ => `
-                <div class="case-item">
-                    <div class="case-header">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <h3 class="case-title">${case_.title}</h3>
-                                <div class="case-meta">
-                                    ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
-                                    投稿者: ${case_.author} | ${case_.date}
-                                </div>
-                            </div>
-                            <div>
-                                <button class="btn" onclick="editCase(${case_.id})" style="background: #007bff; color: white; padding: 5px 10px; margin-right: 5px; font-size: 12px;">編集</button>
-                                <button class="btn" onclick="deleteCase(${case_.id})" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 12px;">削除</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="case-tags">
-                        ${case_.categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
-                    </div>
-                    <div class="case-content">
-                        <strong>📋 内容:</strong><br>
-                        ${case_.content.replace(/\n/g, '<br>')}
-                    </div>
-                    <div class="case-effect">
-                        <strong>📈 効果・成果 (${case_.effectpercent}%改善):</strong><br>
-                        ${case_.effect.replace(/\n/g, '<br>')}
-                        ${case_.users > 1 ? `<br><strong>👥 利用者数:</strong> ${case_.users}人` : ''}
-                    </div>
-                    ${case_.tips ? `
-                        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 10px 0; border-radius: 0 4px 4px 0;">
-                            <strong>💡 活用のコツ:</strong><br>
-                            ${case_.tips.replace(/\n/g, '<br>')}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        }
-
-        function filterCases() {
-            const companyFilter = document.getElementById('companyFilter').value;
-            const categoryFilter = document.getElementById('categoryFilter').value;
-            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-            const filtered = cases.filter(case_ => {
-                const matchCompany = !companyFilter || case_.company === companyFilter;
-                const matchCategory = !categoryFilter || case_.categories.includes(categoryFilter);
-                const matchSearch = !searchTerm || 
-                    case_.title.toLowerCase().includes(searchTerm) ||
-                    case_.content.toLowerCase().includes(searchTerm) ||
-                    case_.effect.toLowerCase().includes(searchTerm) ||
-                    case_.author.toLowerCase().includes(searchTerm);
-                return matchCompany && matchCategory && matchSearch;
-            });
-            const container = document.getElementById('casesList');
-            if (filtered.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">条件に一致する事例が見つかりませんでした。</p>';
-                return;
-            }
-            container.innerHTML = filtered.map(case_ => `
-                <div class="case-item">
-                    <div class="case-header">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <h3 class="case-title">${case_.title}</h3>
-                                <div class="case-meta">
-                                    ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
-                                    投稿者: ${case_.author} | ${case_.date}
-                                </div>
-                            </div>
-                            <div>
-                                <button class="btn" onclick="editCase(${case_.id})" style="background: #007bff; color: white; padding: 5px 10px; margin-right: 5px; font-size: 12px;">編集</button>
-                                <button class="btn" onclick="deleteCase(${case_.id})" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 12px;">削除</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="case-tags">
-                        ${case_.categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
-                    </div>
-                    <div class="case-content">
-                        <strong>📋 内容:</strong><br>
-                        ${case_.content.replace(/\n/g, '<br>')}
-                    </div>
-                    <div class="case-effect">
-                        <strong>📈 効果・成果 (${case_.effectpercent}%改善):</strong><br>
-                        ${case_.effect.replace(/\n/g, '<br>')}
-                        ${case_.users > 1 ? `<br><strong>👥 利用者数:</strong> ${case_.users}人` : ''}
-                    </div>
-                    ${case_.tips ? `
-                        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 10px 0; border-radius: 0 4px 4px 0;">
-                            <strong>💡 活用のコツ:</strong><br>
-                            ${case_.tips.replace(/\n/g, '<br>')}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        }
-
-        function updateStats() {
-            const totalCases = cases.length;
-            const totalCompanies = companies.length;
-            const avgEffect = totalCases > 0 ? Math.round(cases.reduce((sum, c) => sum + c.effectpercent, 0) / totalCases) : 0;
-            const totalUsers = companies.reduce((sum, c) => {
-                const users = typeof c === 'string' ? 1 : c.users;
-                return sum + users;
-            }, 0);
-            document.getElementById('totalCases').textContent = totalCases;
-            document.getElementById('totalCompanies').textContent = totalCompanies;
-            document.getElementById('avgEffect').textContent = avgEffect + '%';
-            document.getElementById('totalUsers').textContent = totalUsers;
-        }
-
-        function updateCompanyStats() {
-            const container = document.getElementById('companyStats');
-            
-            console.log('updateCompanyStats called, cases:', cases.length);
-            console.log('cases data:', cases);
-            
-            if (cases.length === 0) {
-                container.innerHTML = '<p style="color: #666;">事例データがありません</p>';
-                return;
-            }
-            
-            try {
-                // 事例データから会社名を抽出
-                const companiesFromCases = [...new Set(cases.map(case_ => case_.company))];
-                console.log('companiesFromCases:', companiesFromCases);
-                
-                const statsHtml = companiesFromCases.map(companyName => {
-                    console.log('Processing company:', companyName);
-                    // 登録済み会社から利用者数を取得（なければデフォルト）
-                    const registeredCompany = companies.find(c => {
-                        const name = typeof c === 'string' ? c : c.name;
-                        return name === companyName;
-                    });
-                    const companyUsers = registeredCompany 
-                        ? (typeof registeredCompany === 'string' ? 1 : registeredCompany.users || 1)
-                        : 1;
-                    
-                    // この会社の事例データを集計
-                    const companyCases = cases.filter(case_ => case_.company === companyName);
-                    const caseCount = companyCases.length;
-                    
-                    // カテゴリ別件数を集計
-                    const categoryStats = {};
-                    companyCases.forEach(case_ => {
-                        if (case_.categories && Array.isArray(case_.categories)) {
-                            case_.categories.forEach(cat => {
-                                categoryStats[cat] = (categoryStats[cat] || 0) + 1;
-                            });
-                        }
-                    });
-                    
-                    const categoryDisplay = Object.keys(categoryStats).length > 0 
-                        ? Object.entries(categoryStats)
-                            .sort((a, b) => b[1] - a[1])
-                            .slice(0, 3)
-                            .map(([cat, count]) => `${cat}:${count}`)
-                            .join(' | ')
-                        : 'カテゴリなし';
-                    
-                    return `
-                        <div class="company-row">
-                            <div>
-                                <div class="company-name">${companyName}</div>
-                                <div style="font-size: 0.9em; color: #666;">
-                                    総事例数: ${caseCount} | 登録利用者: ${companyUsers}人
-                                </div>
-                            </div>
-                            <div style="width: 300px; font-size: 0.9em;">
-                                ${categoryDisplay}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                container.innerHTML = statsHtml || '<p style="color: #666;">表示できる会社データがありません</p>';
-            } catch (error) {
-                console.error('会社統計更新エラー:', error);
-                container.innerHTML = '<p style="color: red;">統計表示エラー</p>';
-            }
-        }
-
-        function exportData() {
-            if (cases.length === 0) {
-                alert('エクスポートするデータがありません');
-                return;
-            }
-            
-            // CSVヘッダー
-            const headers = [
-                'ID', 'タイトル', '会社名', '部署名', '投稿者', 'カテゴリ', 
-                '事例内容', '効果・成果', '効果率(%)', '利用者数', 
-                '活用のコツ', '投稿日', '作成日時'
-            ];
-            
-            // CSVデータ作成
-            const csvData = cases.map(case_ => [
-                case_.id,
-                `"${case_.title.replace(/"/g, '""')}"`,
-                `"${case_.company.replace(/"/g, '""')}"`,
-                `"${(case_.department || '').replace(/"/g, '""')}"`,
-                `"${case_.author.replace(/"/g, '""')}"`,
-                `"${case_.categories.join(', ').replace(/"/g, '""')}"`,
-                `"${case_.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-                `"${case_.effect.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-                case_.effectpercent,
-                case_.users || 1,
-                `"${(case_.tips || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-                case_.date,
-                case_.created_at
-            ]);
-            
-            // CSV文字列作成
-            const csvContent = [headers.join(','), ...csvData.map(row => row.join(','))].join('\n');
-            
-            // BOMを追加してExcelで文字化けを防ぐ
-            const bom = '\uFEFF';
-            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `ai-cases-export-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function editCase(caseId) {
-            const caseData = cases.find(c => c.id === caseId);
-            if (!caseData) {
-                alert('事例が見つかりません');
-                return;
-            }
-            
-            // フォームにデータを設定
-            document.getElementById('caseTitle').value = caseData.title;
-            document.getElementById('caseCompany').value = caseData.company;
-            document.getElementById('caseDepartment').value = caseData.department || '';
-            document.getElementById('caseAuthor').value = caseData.author;
-            document.getElementById('caseContent').value = caseData.content;
-            document.getElementById('caseEffect').value = caseData.effect;
-            document.getElementById('caseEffectPercent').value = caseData.effectpercent;
-            document.getElementById('caseUsers').value = caseData.users || 1;
-            document.getElementById('caseTips').value = caseData.tips || '';
-            
-            // カテゴリチェックボックスをリセットして設定
-            document.querySelectorAll('.category-checkbox input').forEach(cb => cb.checked = false);
-            caseData.categories.forEach(cat => {
-                const checkbox = document.querySelector(`input[value="${cat}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-            
-            // 編集モードを記録
-            document.getElementById('caseForm').dataset.editId = caseId;
-            document.querySelector('#caseModal h2').textContent = '📝 事例編集';
-            
-            openModal();
-        }
-        
-        async function deleteCase(caseId) {
-            if (!confirm('この事例を削除しますか？')) return;
-            
-            // Supabaseから削除
+        async function saveCase(caseData) {
             if (supabase) {
                 try {
-                    console.log('Deleting case from Supabase:', caseId);
-                    const { error } = await supabase
+                    const { data, error } = await supabase
                         .from('cases')
-                        .delete()
-                        .eq('id', caseId);
+                        .insert([caseData]);
                     if (error) throw error;
-                    console.log('Case deleted from Supabase:', caseId);
-                    syncWithSupabase(); // 同期して最新データを取得
-                    alert('事例を削除しました');
+                    syncWithSupabase();
                     return;
                 } catch (error) {
-                    console.error('Supabase事例削除エラー:', error);
-                    alert('事例の削除に失敗しました。ローカルからのみ削除します。');
+                    console.error('Supabase保存エラー:', error);
                 }
             }
-            
-            // Supabaseが使えないかエラー時はローカルからのみ削除
-            console.log('Deleting case from local:', caseId);
-            cases = cases.filter(c => c.id !== caseId);
+            cases.unshift(caseData);
             displayCases();
             updateStats();
             updateCompanyStats();
-            alert('事例をローカルから削除しました');
         }
 
-        function manualSync() {
-            if (supabase) {
-                syncWithSupabase();
+        // 会社設定フォーム処理
+        document.getElementById('companyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const companyName = document.getElementById('companyName').value.trim();
+            const companyUsers = parseInt(document.getElementById('companyUsers').value) || 1;
+            const editIndex = this.dataset.editIndex;
+            
+            if (!companyName) return;
+            
+            const newCompany = { name: companyName, users: companyUsers };
+            
+            if (editIndex !== undefined) {
+                const oldCompany = companies[editIndex];
+                const oldName = typeof oldCompany === 'string' ? oldCompany : oldCompany.name;
+                
+                if (oldName !== companyName && supabase) {
+                    try {
+                        await supabase.from('companies').delete().eq('name', oldName);
+                    } catch (error) {
+                        console.error('旧会社データ削除エラー:', error);
+                    }
+                }
+                
+                companies[editIndex] = newCompany;
+                delete this.dataset.editIndex;
+                await saveCompanyToSupabase(newCompany);
+                alert('会社情報を更新しました！');
             } else {
-                alert('Supabaseが設定されていません');
+                const exists = companies.some(c => {
+                    const name = typeof c === 'string' ? c : c.name;
+                    return name === companyName;
+                });
+                if (!exists) {
+                    companies.push(newCompany);
+                    await saveCompanyToSupabase(newCompany);
+                    alert('会社を追加しました！');
+                } else {
+                    alert('この会社名は既に登録されています');
+                    return;
+                }
             }
-        }
+            
+            await saveCompanies();
+            populateCompanySelectors();
+            displayCompaniesList();
+            updateStats();
+            updateCompanyStats();
+            document.getElementById('companyName').value = '';
+            document.getElementById('companyUsers').value = '1';
+        });
 
+        // Supabase設定フォーム処理
+        document.getElementById('supabaseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            localStorage.setItem('supabaseConfig', JSON.stringify({ url, key }));
+            initSupabase(url, key);
+            closeSupabaseModal();
+            alert('Supabase設定を保存しました！');
+        });
 
-
+        // モーダル外クリックで閉じる
         window.onclick = function(event) {
-            const modals = ['caseModal', 'companyModal', 'supabaseModal'];
+            const modals = ['detailModal', 'caseModal', 'companyModal', 'supabaseModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
                 if (event.target === modal) {
                     modal.style.display = 'none';
                 }
             });
-        };
-        
-        console.log('=== SCRIPT END ===');
+        }
     </script>
 </body>
 </html>
