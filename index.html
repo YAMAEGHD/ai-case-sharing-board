@@ -539,6 +539,8 @@
         function closeModal() {
             document.getElementById('caseModal').style.display = 'none';
             document.getElementById('caseForm').reset();
+            delete document.getElementById('caseForm').dataset.editId;
+            document.querySelector('#caseModal h2').textContent = '📝 新規事例投稿';
         }
 
         document.getElementById('caseForm').addEventListener('submit', async function(e) {
@@ -549,8 +551,9 @@
                 alert('カテゴリを1つ以上選択してください');
                 return;
             }
+            const editId = this.dataset.editId;
             const caseData = {
-                id: Date.now(),
+                id: editId ? parseInt(editId) : Date.now(),
                 title: document.getElementById('caseTitle').value,
                 company: document.getElementById('caseCompany').value,
                 department: document.getElementById('caseDepartment').value,
@@ -562,11 +565,33 @@
                 users: parseInt(document.getElementById('caseUsers').value) || 1,
                 tips: document.getElementById('caseTips').value,
                 date: new Date().toISOString().split('T')[0],
-                created_at: new Date().toISOString()
+                created_at: editId ? cases.find(c => c.id === parseInt(editId))?.created_at || new Date().toISOString() : new Date().toISOString()
             };
-            await saveCase(caseData);
+            
+            if (editId) {
+                if (supabase) {
+                    try {
+                        const { error } = await supabase.from('cases').update(caseData).eq('id', parseInt(editId));
+                        if (error) throw error;
+                        syncWithSupabase();
+                    } catch (error) {
+                        const index = cases.findIndex(c => c.id === parseInt(editId));
+                        if (index !== -1) cases[index] = caseData;
+                    }
+                } else {
+                    const index = cases.findIndex(c => c.id === parseInt(editId));
+                    if (index !== -1) cases[index] = caseData;
+                }
+                alert('事例を更新しました！');
+            } else {
+                await saveCase(caseData);
+                alert('事例を投稿しました！');
+            }
+            
+            displayCases();
+            updateStats();
+            updateCompanyStats();
             closeModal();
-            alert('事例を投稿しました！');
         });
 
         function displayCases() {
@@ -578,10 +603,18 @@
             container.innerHTML = cases.map(case_ => `
                 <div class="case-item">
                     <div class="case-header">
-                        <h3 class="case-title">${case_.title}</h3>
-                        <div class="case-meta">
-                            ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
-                            投稿者: ${case_.author} | ${case_.date}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <h3 class="case-title">${case_.title}</h3>
+                                <div class="case-meta">
+                                    ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
+                                    投稿者: ${case_.author} | ${case_.date}
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn" onclick="editCase(${case_.id})" style="background: #007bff; color: white; padding: 5px 10px; margin-right: 5px; font-size: 12px;">編集</button>
+                                <button class="btn" onclick="deleteCase(${case_.id})" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 12px;">削除</button>
+                            </div>
                         </div>
                     </div>
                     <div class="case-tags">
@@ -628,10 +661,18 @@
             container.innerHTML = filtered.map(case_ => `
                 <div class="case-item">
                     <div class="case-header">
-                        <h3 class="case-title">${case_.title}</h3>
-                        <div class="case-meta">
-                            ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
-                            投稿者: ${case_.author} | ${case_.date}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <h3 class="case-title">${case_.title}</h3>
+                                <div class="case-meta">
+                                    ${case_.company} ${case_.department ? `/ ${case_.department}` : ''}<br>
+                                    投稿者: ${case_.author} | ${case_.date}
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn" onclick="editCase(${case_.id})" style="background: #007bff; color: white; padding: 5px 10px; margin-right: 5px; font-size: 12px;">編集</button>
+                                <button class="btn" onclick="deleteCase(${case_.id})" style="background: #dc3545; color: white; padding: 5px 10px; font-size: 12px;">削除</button>
+                            </div>
                         </div>
                     </div>
                     <div class="case-tags">
@@ -773,6 +814,64 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        function editCase(caseId) {
+            const caseData = cases.find(c => c.id === caseId);
+            if (!caseData) {
+                alert('事例が見つかりません');
+                return;
+            }
+            
+            // フォームにデータを設定
+            document.getElementById('caseTitle').value = caseData.title;
+            document.getElementById('caseCompany').value = caseData.company;
+            document.getElementById('caseDepartment').value = caseData.department || '';
+            document.getElementById('caseAuthor').value = caseData.author;
+            document.getElementById('caseContent').value = caseData.content;
+            document.getElementById('caseEffect').value = caseData.effect;
+            document.getElementById('caseEffectPercent').value = caseData.effectpercent;
+            document.getElementById('caseUsers').value = caseData.users || 1;
+            document.getElementById('caseTips').value = caseData.tips || '';
+            
+            // カテゴリチェックボックスをリセットして設定
+            document.querySelectorAll('.category-checkbox input').forEach(cb => cb.checked = false);
+            caseData.categories.forEach(cat => {
+                const checkbox = document.querySelector(`input[value="${cat}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            
+            // 編集モードを記録
+            document.getElementById('caseForm').dataset.editId = caseId;
+            document.querySelector('#caseModal h2').textContent = '📝 事例編集';
+            
+            openModal();
+        }
+        
+        async function deleteCase(caseId) {
+            if (!confirm('この事例を削除しますか？')) return;
+            
+            if (supabase) {
+                try {
+                    const { error } = await supabase
+                        .from('cases')
+                        .delete()
+                        .eq('id', caseId);
+                    if (error) throw error;
+                    syncWithSupabase();
+                    alert('事例を削除しました');
+                    return;
+                } catch (error) {
+                    console.error('Supabase削除エラー:', error);
+                }
+            }
+            
+            // ローカルから削除
+            cases = cases.filter(c => c.id !== caseId);
+            displayCases();
+            updateStats();
+            updateCompanyStats();
+            alert('事例を削除しました');
         }
 
         function manualSync() {
