@@ -707,25 +707,24 @@
         function updateCompanyStats() {
             const container = document.getElementById('companyStats');
             
-            if (!companies || companies.length === 0) {
-                container.innerHTML = '<p style="color: #666;">会社が登録されていません</p>';
+            if (cases.length === 0) {
+                container.innerHTML = '<p style="color: #666;">事例データがありません</p>';
                 return;
             }
             
             try {
-                const statsHtml = companies.map(company => {
-                    // 会社名と利用者数を安全に取得
-                    let companyName, companyUsers;
-                    if (typeof company === 'string') {
-                        companyName = company;
-                        companyUsers = 1;
-                    } else if (company && company.name) {
-                        companyName = company.name;
-                        companyUsers = company.users || 1;
-                    } else {
-                        console.error('不正な会社データ:', company);
-                        return '';
-                    }
+                // 事例データから会社名を抽出
+                const companiesFromCases = [...new Set(cases.map(case_ => case_.company))];
+                
+                const statsHtml = companiesFromCases.map(companyName => {
+                    // 登録済み会社から利用者数を取得（なければデフォルト）
+                    const registeredCompany = companies.find(c => {
+                        const name = typeof c === 'string' ? c : c.name;
+                        return name === companyName;
+                    });
+                    const companyUsers = registeredCompany 
+                        ? (typeof registeredCompany === 'string' ? 1 : registeredCompany.users || 1)
+                        : 1;
                     
                     // この会社の事例データを集計
                     const companyCases = cases.filter(case_ => case_.company === companyName);
@@ -734,9 +733,11 @@
                     // カテゴリ別件数を集計
                     const categoryStats = {};
                     companyCases.forEach(case_ => {
-                        case_.categories.forEach(cat => {
-                            categoryStats[cat] = (categoryStats[cat] || 0) + 1;
-                        });
+                        if (case_.categories && Array.isArray(case_.categories)) {
+                            case_.categories.forEach(cat => {
+                                categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+                            });
+                        }
                     });
                     
                     const categoryDisplay = Object.keys(categoryStats).length > 0 
@@ -745,7 +746,7 @@
                             .slice(0, 3)
                             .map(([cat, count]) => `${cat}:${count}`)
                             .join(' | ')
-                        : '事例なし';
+                        : 'カテゴリなし';
                     
                     return `
                         <div class="company-row">
@@ -760,7 +761,7 @@
                             </div>
                         </div>
                     `;
-                }).filter(html => html !== '').join('');
+                }).join('');
                 
                 container.innerHTML = statsHtml || '<p style="color: #666;">表示できる会社データがありません</p>';
             } catch (error) {
