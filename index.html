@@ -741,27 +741,33 @@
                     // この会社の事例データを集計
                     const companyCases = cases.filter(case_ => case_.company === companyName);
                     const caseCount = companyCases.length;
-                    const totalEffect = companyCases.reduce((sum, case_) => sum + (case_.effectpercent || 0), 0);
-                    const avgEffect = caseCount > 0 ? Math.round(totalEffect / caseCount) : 0;
-                    const effectClass = avgEffect >= 70 ? 'effect-high' : avgEffect >= 40 ? 'effect-medium' : 'effect-low';
+                    
+                    // カテゴリ別件数を集計
+                    const categoryStats = {};
+                    companyCases.forEach(case_ => {
+                        case_.categories.forEach(cat => {
+                            categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+                        });
+                    });
+                    
+                    const categoryDisplay = Object.keys(categoryStats).length > 0 
+                        ? Object.entries(categoryStats)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 3)
+                            .map(([cat, count]) => `${cat}:${count}`)
+                            .join(' | ')
+                        : '事例なし';
                     
                     return `
                         <div class="company-row">
                             <div>
                                 <div class="company-name">${companyName}</div>
                                 <div style="font-size: 0.9em; color: #666;">
-                                    事例数: ${caseCount} | 登録利用者: ${companyUsers}人
+                                    総事例数: ${caseCount} | 登録利用者: ${companyUsers}人
                                 </div>
                             </div>
-                            <div style="width: 200px;">
-                                ${caseCount > 0 ? `
-                                    <div class="effect-bar">
-                                        <div class="effect-fill ${effectClass}" style="width: ${avgEffect}%"></div>
-                                        <div class="effect-text">${avgEffect}%</div>
-                                    </div>
-                                ` : `
-                                    <div style="text-align: center; color: #999; font-size: 0.9em;">事例なし</div>
-                                `}
+                            <div style="width: 300px; font-size: 0.9em;">
+                                ${categoryDisplay}
                             </div>
                         </div>
                     `;
